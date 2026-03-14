@@ -1,3 +1,4 @@
+import { GoogleGenAI } from "@google/genai";
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { Button, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -5,6 +6,20 @@ import Tesseract from 'tesseract.js';
 import { ThemedText } from './themed-text';
 
 const API_KEY = "K88520222388957";
+const Gemini_key = "AIzaSyCaANmyo-BkSvg_HUZakeQmaoUkVQYRDdY"
+const ai = new GoogleGenAI({ apiKey: Gemini_key });
+const TalkToGenAI = async (prompt: string) => {
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+        });
+        return response.text || 'No response from AI';
+    } catch (error) {
+        console.error('TalkToGenAI failed', error);
+        return 'Error communicating with AI. Please try again.';
+    }
+}
 const scanText = async (uri: string) => {
     try {
         const uriResponse = await fetch(uri);
@@ -77,6 +92,9 @@ const scanWithGoogleVision = async (uri: string) => {
 const ImageInput = () => {
     const [image, setImage] = useState('');
     const [scannedText, setScannedText] = useState('');
+    const [loading1, setLoading1] = useState(false); // Scanning
+    const [loading2, setLoading2] = useState(false); // Parsing
+    const [aiRes, setAIRes] = useState('');
 
     const takePhoto = async () => {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -106,8 +124,39 @@ const ImageInput = () => {
         }
     }
 
+    const parseToJSON = TalkToGenAI("Turn this text into JSON format: " + scannedText).then((res) => {
+        console.log("AI Response:", res);
+        const parsed = res.replace(/```json|```/g, '').trim(); // Replace single quotes with double quotes
+        setAIRes(parsed);
+        JSON.parse(parsed); // This will throw an error if the response is not valid JSON
+    }).catch((err) => {
+        console.error('Error in TalkToGenAI:', err);
+        setAIRes('');
+    });
+
+    // const testResponse = TalkToGenAI("Create a table").then((res) =>{
+    //     setAIRes(res);
+    // }).catch((err) => {
+    //     console.error('Error in TalkToGenAI:', err);
+    // });
+
+
     return (
         <View>
+            {/* <input type="text" placeholder="Enter text to send to AI" id="ai-input"></input>
+            <Button title="Send to AI" onPress={async () => {
+                const inputElement = document.getElementById('ai-input') as HTMLInputElement;
+                const userInput = inputElement.value;
+                const response = await TalkToGenAI(userInput);
+                setAIRes(response);
+            }} />
+            {aiRes.length > 0 && (
+                <View style={styles.scannedTextContainer}>
+                    <ThemedText type='title'>AI Response:</ThemedText>
+                    <ThemedText type='subtitle'>{aiRes}</ThemedText>
+                </View>
+            )} */}
+
             <ThemedText type='title'>Scan now:</ThemedText>
             <TouchableOpacity onPress={takePhoto}>
                 <ThemedText type='subtitle'>Take Photo</ThemedText>
@@ -141,17 +190,25 @@ const ImageInput = () => {
             )}
             {scannedText.length > 0 && (
                 <View><ThemedText type='title'>Scanned Text:</ThemedText>
-                <View style={styles.scannedTextContainer}>
-                <ThemedText type='subtitle'>{scannedText}</ThemedText>
-            </View></View>
+                    <View style={styles.scannedTextContainer}>
+                        <ThemedText type='default'>{scannedText}</ThemedText>
+                    </View>
+                    <View style={styles.buttonContainer}>
+                        <Button title="Parse to JSON" onPress={async () => {
+                            const result = await parseToJSON;
+                        }} />
+                    </View>
+                    {aiRes.length > 0 && (
+                        <View style={styles.scannedTextContainer}>
+                            <ThemedText type='default'>{aiRes}</ThemedText>
+                        </View>
+                    )}
+                </View>
             )}
-            {/* //     {image && <Button title="Scan!" onPress={async () => {
-        //         const text = await scanText(image);
-        //         setScannedText(text);
-        //     }} />}
-        //     {scannedText && (
-        //         <ThemedText type='subtitle'>Scanned Text: {scannedText}</ThemedText>
-        //     )} */}
+            {/* <View style={styles.scannedTextContainer}>
+                <ThemedText type='subtitle'>{TalkToGenAI("Create a table of sweet potatoes and their nutritional information.")}</ThemedText>
+            </View> */}
+
         </View>
     )
 }
