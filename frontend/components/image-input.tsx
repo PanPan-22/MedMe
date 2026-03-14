@@ -143,20 +143,6 @@ const ImageInput = () => {
 
     return (
         <View>
-            {/* <input type="text" placeholder="Enter text to send to AI" id="ai-input"></input>
-            <Button title="Send to AI" onPress={async () => {
-                const inputElement = document.getElementById('ai-input') as HTMLInputElement;
-                const userInput = inputElement.value;
-                const response = await TalkToGenAI(userInput);
-                setAIRes(response);
-            }} />
-            {aiRes.length > 0 && (
-                <View style={styles.scannedTextContainer}>
-                    <ThemedText type='title'>AI Response:</ThemedText>
-                    <ThemedText type='subtitle'>{aiRes}</ThemedText>
-                </View>
-            )} */}
-
             <ThemedText type='title'>Scan now:</ThemedText>
             <TouchableOpacity onPress={takePhoto}>
                 <ThemedText type='subtitle'>Take Photo</ThemedText>
