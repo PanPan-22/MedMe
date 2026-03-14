@@ -108,7 +108,7 @@ const ImageInput = () => {
 
     return (
         <View>
-            <ThemedText type='title'>Disturbing the Peace:</ThemedText>
+            <ThemedText type='title'>Scan now:</ThemedText>
             <TouchableOpacity onPress={takePhoto}>
                 <ThemedText type='subtitle'>Take Photo</ThemedText>
             </TouchableOpacity>
