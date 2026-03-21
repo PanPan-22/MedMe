@@ -5,7 +5,7 @@ const { withNativeWind } = require("nativewind/metro");
 const config = getDefaultConfig(__dirname);
 
 // Add wasm asset support
-config.resolver.assetExts.push("wasm");
+config.resolver.assetExts.push("wasm", "db", "sqlite");
 
 // Add COEP and COOP headers to support SharedArrayBuffer
 config.server.enhanceMiddleware = (middleware) => {
