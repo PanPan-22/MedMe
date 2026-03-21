@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import * as ImagePicker from 'expo-image-picker';
+// import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { Button, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Tesseract from 'tesseract.js';
@@ -139,10 +140,24 @@ const ImageInput = () => {
     // }).catch((err) => {
     //     console.error('Error in TalkToGenAI:', err);
     // });
+    // const database = useSQLiteContext();
+    // const handleSave = async() => {
+    //     const command = 'INSERT INTO medicines (medicine_name, count, type, whenToTake, additional) VALUES (?, ?, ?, ?, ?)'
+    //     database.runAsync(command,
+    //     ['Medicine A', 30, 'Pill', 'Morning', 'Take with water'])
+    //     .then(() => {
+    //         console.log(command);
+    //         console.log('Medicine saved successfully');
+    //     })
+    //     .catch((error) => {
+    //         console.error('Error saving medicine:', error);
+    //     });
+    // };
 
 
     return (
         <View>
+            {/* <Button title="Save to DB" onPress={handleSave} /> */}
             <ThemedText type='title'>Scan now:</ThemedText>
             <TouchableOpacity onPress={takePhoto}>
                 <ThemedText type='subtitle'>Take Photo</ThemedText>
@@ -191,9 +206,6 @@ const ImageInput = () => {
                     )}
                 </View>
             )}
-            {/* <View style={styles.scannedTextContainer}>
-                <ThemedText type='subtitle'>{TalkToGenAI("Create a table of sweet potatoes and their nutritional information.")}</ThemedText>
-            </View> */}
 
         </View>
     )

@@ -1,10 +1,10 @@
-import { Image } from 'expo-image';
-import { StyleSheet } from 'react-native';
-
 import { HelloWave } from '@/components/hello-wave';
+import { SteelBallRun } from '@/components/local_database';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Image } from 'expo-image';
+import { StyleSheet, View } from 'react-native';
 
 export default function HomeScreen() {
   return (
@@ -23,6 +23,13 @@ export default function HomeScreen() {
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
         <ThemedText> {`Tap the "Medicine" tab to try out the camera!`}</ThemedText>
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Step 2: SQLite Test</ThemedText>
+        <View>
+            <ThemedText>Tap the "SQLite" tab to test the local database connection!</ThemedText>
+            <SteelBallRun />
+        </View>
       </ThemedView>
     </ParallaxScrollView>
   );
