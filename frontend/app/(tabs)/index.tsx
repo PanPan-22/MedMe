@@ -1,5 +1,5 @@
 import { HelloWave } from '@/components/hello-wave';
-import { SteelBallRun } from '@/components/local_database';
+import { StartDB } from '@/components/local_database';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -28,7 +28,7 @@ export default function HomeScreen() {
         <ThemedText type="subtitle">Step 2: SQLite Test</ThemedText>
         <View>
             <ThemedText>Tap the "SQLite" tab to test the local database connection!</ThemedText>
-            <SteelBallRun />
+            <StartDB />
         </View>
       </ThemedView>
     </ParallaxScrollView>

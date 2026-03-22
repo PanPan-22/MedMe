@@ -106,7 +106,19 @@ async function openDatabase(): Promise<SQLiteDatabase> {
     }
 }
 
-const SteelBallRun = () => {
+const medicineExists = async (medicineName: string): Promise<boolean> => {
+    if (!db) return false;
+    try {
+        const result = await db.getFirstAsync('SELECT medicine_id FROM medicines WHERE medicine_name = ?', [medicineName]);
+        return result ? true : false;
+    }
+    catch (error) {
+        console.error('Error checking medicine existence:', error);
+        return false;
+    }
+}
+
+const StartDB = () => {
     const [notes, setNotes] = useState<Note[]>([]);
     const [loading, setLoading] = useState(true);
     const fetchNotes = async () => {
@@ -121,7 +133,7 @@ const SteelBallRun = () => {
     };
 
     const insertMedicineNote = async (note: Note) => {
-        if (!db) return;
+        if (!db || await medicineExists(note.medicine_name)) return;
         try {
             await db.runAsync(
                 'INSERT INTO medicines (medicine_name, count, type, whenToTake, additional) VALUES (?, ?, ?, ?, ?)',
@@ -164,22 +176,25 @@ const SteelBallRun = () => {
 
             </View>
             <View style={{ marginTop: 20 }}>
-                <Button title="Clear Database" onPress={clearDatabase} />
+                <Button title="Clear Database" onPress={clearDatabase} color="#ff2400"/>
             </View>
-            <FlatList
-                data={notes}
-                keyExtractor={(item) => item.medicine_name}
-                renderItem={({ item }) => (
-                    <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
-                        <Text>{item.medicine_name}</Text>
-                        <Text>Count: {item.count}</Text>
-                        <Text>Type: {item.type}</Text>
-                        <Text>When to Take: {item.whenToTake}</Text>
-                        <Text>Additional: {item.additional}</Text>
-                    </View>
-                )}
-                ListEmptyComponent={<Text>No medicines found.</Text>}
-            />
+            {loading ? (
+                <Text>Loading...</Text>
+            ) : (
+                <FlatList
+                    data={notes}
+                    keyExtractor={(item) => item.medicine_name}
+                    renderItem={({ item }) => (
+                        <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
+                            <Text style={{ fontSize: 18, fontWeight: 'bold' }}>{item.medicine_name}</Text>
+                            <Text>Count: {item.count}</Text>
+                            <Text>Type: {item.type}</Text>
+                            <Text>When to Take: {item.whenToTake}</Text>
+                            <Text>Additional: {item.additional}</Text>
+                        </View>
+                    )}
+                    ListEmptyComponent={<Text>No medicines found.</Text>}
+                />)}
         </View>
     )
 }
@@ -187,5 +202,5 @@ const SteelBallRun = () => {
 
 
 
-export { SteelBallRun };
+export { StartDB };
 
