@@ -34,8 +34,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="medicine"
         options={{
-          title: 'Medicine',
-          tabBarIcon: ({ color }) => <MaterialIcons size={28} name="medication" color={color} />,
+          title: 'Scan',
+          tabBarIcon: ({ color }) => <MaterialIcons size={28} name="monochrome-photos" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="list"
+        options={{
+          title: 'Schedule',
+          tabBarIcon: ({ color }) => <MaterialIcons size={28} name="format-list-bulleted" color={color} />,
         }}
       />
     </Tabs>

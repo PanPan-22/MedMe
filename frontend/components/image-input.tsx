@@ -1,10 +1,27 @@
 import { GoogleGenAI } from "@google/genai";
 import * as ImagePicker from 'expo-image-picker';
 // import { useSQLiteContext } from 'expo-sqlite';
+import * as SQLite from 'expo-sqlite';
 import { useState } from 'react';
 import { Button, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import Tesseract from 'tesseract.js';
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import { Note, saveToDB as SteelBallRun } from './local_database';
 import { ThemedText } from './themed-text';
+
+type SQLiteDatabase = SQLite.SQLiteDatabase | null;
+let db: SQLiteDatabase = null;
+
+const medicineSchema = z.object({
+    medicine_name: z.string().describe("Name of the medicine"),
+    count: z.number().describe("Number of pills"),
+    type: z.string().describe("Type of the medicine"),
+    whenToTake: z.string().describe("When to take the medicine in HH:MM format (e.g., 08:00, 14:00)"),
+    additional: z.string().describe("Additional information about the medicine"),
+}).describe("Schema for a medicine note");
+
+const jsonSchema = zodToJsonSchema(medicineSchema, "medicineSchema");
 
 const API_KEY = "K88520222388957";
 const Gemini_key = "AIzaSyCaANmyo-BkSvg_HUZakeQmaoUkVQYRDdY"
@@ -12,8 +29,12 @@ const ai = new GoogleGenAI({ apiKey: Gemini_key });
 const TalkToGenAI = async (prompt: string) => {
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseJsonSchema: zodToJsonSchema(medicineSchema),
+            }
         });
         return response.text || 'No response from AI';
     } catch (error) {
@@ -89,13 +110,13 @@ const scanWithGoogleVision = async (uri: string) => {
     }
 }
 
-
 const ImageInput = () => {
     const [image, setImage] = useState('');
     const [scannedText, setScannedText] = useState('');
     const [loading1, setLoading1] = useState(false); // Scanning
     const [loading2, setLoading2] = useState(false); // Parsing
     const [aiRes, setAIRes] = useState('');
+    const [note, setNote] = useState<Note | null>(null);
 
     const takePhoto = async () => {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -125,35 +146,19 @@ const ImageInput = () => {
         }
     }
 
-    const parseToJSON = TalkToGenAI("Turn this text into JSON format: " + scannedText).then((res) => {
-        console.log("AI Response:", res);
-        const parsed = res.replace(/```json|```/g, '').trim(); // Replace single quotes with double quotes
-        setAIRes(parsed);
-        JSON.parse(parsed); // This will throw an error if the response is not valid JSON
-    }).catch((err) => {
-        console.error('Error in TalkToGenAI:', err);
-        setAIRes('');
-    });
-
-    // const testResponse = TalkToGenAI("Create a table").then((res) =>{
-    //     setAIRes(res);
-    // }).catch((err) => {
-    //     console.error('Error in TalkToGenAI:', err);
-    // });
-    // const database = useSQLiteContext();
-    // const handleSave = async() => {
-    //     const command = 'INSERT INTO medicines (medicine_name, count, type, whenToTake, additional) VALUES (?, ?, ?, ?, ?)'
-    //     database.runAsync(command,
-    //     ['Medicine A', 30, 'Pill', 'Morning', 'Take with water'])
-    //     .then(() => {
-    //         console.log(command);
-    //         console.log('Medicine saved successfully');
-    //     })
-    //     .catch((error) => {
-    //         console.error('Error saving medicine:', error);
-    //     });
-    // };
-
+    const handleParseJSON = async () => {
+        try{
+            const res = await TalkToGenAI("Turn this text into JSON format: " + scannedText);
+            console.log("AI Response:", res);
+            const note = JSON.parse(res);
+            setAIRes(res);
+            setNote(note);
+        }
+        catch(err){
+            console.error('Error in TalkToGenAI:', err);
+            setAIRes('Error communicating with AI. Please try again.');
+        }
+    }
 
     return (
         <View>
@@ -174,12 +179,12 @@ const ImageInput = () => {
                             setScannedText(text);
                         }} />
                     </View>
-                    <View style={styles.buttonContainer}>
+                    {/* <View style={styles.buttonContainer}>
                         <Button title="Scan with Tesseract!" onPress={async () => {
                             const text = await scanWithTesseract(image);
                             setScannedText(text);
                         }} />
-                    </View>
+                    </View> */}
                     <View style={styles.buttonContainer}>
                         <Button title="Scan with Google Vision!" onPress={async () => {
                             const text = await scanWithGoogleVision(image);
@@ -194,17 +199,33 @@ const ImageInput = () => {
                     <View style={styles.scannedTextContainer}>
                         <ThemedText type='default'>{scannedText}</ThemedText>
                     </View>
-                    <View style={styles.buttonContainer}>
+                    <View style={[styles.buttonContainer, { flexDirection: 'row', justifyContent: 'space-between' }]}>
                         <Button title="Parse to JSON" onPress={async () => {
-                            const result = await parseToJSON;
+                            await handleParseJSON();
+                        }} />
+                        <Button title="Clear" onPress={() => {
+                            setImage('');
+                            setScannedText('');
+                            setAIRes('');
+                            setNote({"medicine_name": "", "count": 0, "type": "", "whenToTake": "", "additional": ""});
                         }} />
                     </View>
                     {aiRes.length > 0 && (
                         <View style={styles.scannedTextContainer}>
-                            <ThemedText type='default'>{aiRes}</ThemedText>
+                            <ThemedText type='default'>Medicine Name: {note?.medicine_name}{"\n"}
+                                Count: {note?.count}{"\n"}
+                                Type: {note?.type}{"\n"}
+                                When to Take: {note?.whenToTake}{"\n"}
+                                Additional: {note?.additional}
+                            </ThemedText>
+                            <View style={[styles.buttonContainer, { marginTop: 20 }]}>
+                                <Button title="Save to DB" onPress={() => note && SteelBallRun(note)}/>
+                            </View>
+
                         </View>
                     )}
                 </View>
+                
             )}
 
         </View>
