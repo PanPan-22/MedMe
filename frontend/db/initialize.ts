@@ -5,12 +5,13 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
     await db.execAsync(`
       PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS schedule (
-        id INTEGER PRIMARY KEY NOT NULL, 
-        name TEXT NOT NULL, 
-        amount INTEGER NOT NULL, 
-        time TEXT NOT NULL, 
-        note TEXT
-      );
+      id INTEGER PRIMARY KEY NOT NULL, 
+      name TEXT NOT NULL, 
+      amount INTEGER, 
+      time TEXT, 
+      note TEXT,
+      notification_id TEXT -- Add this!
+    );
     `);
     console.log("Database initialized");
   } catch (error) {

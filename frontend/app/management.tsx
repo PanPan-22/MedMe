@@ -26,12 +26,23 @@ export default function ManagementScreen() {
 
   const clearAllMeds = async () => {
     try {
+      // 1. Always safe: Clear your main data
       await db.execAsync("DELETE FROM schedule;");
-      // If you are using an ID with AUTOINCREMENT and want it to reset to 1:
-      await db.execAsync("DELETE FROM sqlite_sequence WHERE name='schedule';");
+
+      // 2. Only reset the ID counter if the sequence table actually exists
+      await db
+        .execAsync(
+          `
+      DELETE FROM sqlite_sequence WHERE name='schedule';
+    `,
+        )
+        .catch((e) => {
+          // We ignore this error because it just means
+          // the sequence table hasn't been created yet.
+          console.log("sqlite_sequence not found, skipping reset.");
+        });
 
       alert("Database cleared!");
-      // If you are on the list screen, call your fetch function here to refresh
     } catch (error) {
       console.error("Error clearing database:", error);
     }
@@ -53,7 +64,7 @@ export default function ManagementScreen() {
     <View className="bg-background p-2 h-full">
       <View className="items-center">
         <Stack.Screen options={{ headerShown: true, title: "Management" }} />
-        <View className="flex-row items-center justify-between border border-primary gap-4 p-2 mb-4 w-full">
+        <View className="flex-row items-center justify-between border border-primary p-2 mb-2 w-full">
           <Text className="text-2xl text-primary">Your Medication</Text>
           <Link href="/add-schedule" push asChild>
             <Pressable className="flex-row items-center justify-center">
@@ -99,8 +110,7 @@ export default function ManagementScreen() {
         <Pressable
           className="items-center justify-center bg-primary rounded-xl p-4 w-60"
           onPress={async () => {
-            clearAllMeds();
-            // Optionally, you can also call fetchMeds() here to refresh the list immediately
+            await clearAllMeds();
             await fetchMeds();
           }}
         >

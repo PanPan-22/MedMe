@@ -24,7 +24,25 @@ export default function RootLayout() {
     <>
       <StatusBar style={colorScheme === "dark" ? "dark" : "light"} />
       <SQLiteProvider databaseName="myDatabase.db" onInit={initializeDatabase}>
-        <Stack />
+        <Stack
+          screenOptions={{
+            // header: () => (
+            //   <SafeAreaView className="flex-row h-20 w-full items-center justify-between p-2 bg-primary">
+            //     <Ionicons name="arrow-back" size={24} color="white" />
+            //     <Text className="text-white text-xl">Chaiyaporn</Text>
+            //     <Image
+            //       source={require("../assets/images/tempura.jpg")}
+            //       style={{
+            //         width: 40,
+            //         height: 40,
+            //         borderRadius: 20,
+            //       }}
+            //     />
+            //   </SafeAreaView>
+            // ),
+            headerShown: true,
+          }}
+        />
       </SQLiteProvider>
     </>
   );
