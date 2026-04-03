@@ -1,4 +1,3 @@
-import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
@@ -10,44 +9,6 @@ export default function ManagementScreen() {
   const [amount, setAmount] = useState("");
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
-
-  const scheduleMedicationReminder = async (name: string, timeStr: string) => {
-    // 1. Check Permissions
-    const settings = await Notifications.getPermissionsAsync();
-    let status = settings.granted;
-
-    if (!status) {
-      const { status: newStatus } =
-        await Notifications.requestPermissionsAsync();
-      status = newStatus === "granted";
-    }
-
-    if (!status) {
-      alert("Permission for notifications is required to send reminders.");
-      return null;
-    }
-
-    // 2. Parse HH:MM
-    const [hours, minutes] = timeStr.split(":").map(Number);
-
-    // 3. Schedule the recurring daily notification
-    const notificationId = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "Medication Time! 💊",
-        body: `It is time to take your ${name}.`,
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.MAX,
-      },
-      trigger: {
-        hour: hours,
-        minute: minutes,
-        repeats: true, // This ensures it fires every day at this time
-        channelId: "default", // Matches the channel in your _layout.tsx
-      },
-    });
-
-    return notificationId; // We return this so we can save it to the DB
-  };
 
   const addMed = async () => {
     // 1. Basic Empty Check
@@ -66,13 +27,13 @@ export default function ManagementScreen() {
     try {
       // 2. Insert into SQLite with the notification ID
       await db.runAsync(
-        "INSERT INTO schedule (name, amount, time, note, notification_id) VALUES (?, ?, ?, ?, ?)",
-        [name, parseInt(amount) || 0, time, note, notifId],
+        "INSERT INTO schedule (name, amount, time, note) VALUES (?, ?, ?, ?)",
+        [name, parseInt(amount) || 0, time, note],
       );
-
       return true;
     } catch (error) {
-      console.error("Failed to save and schedule:", error);
+      console.error("Insert failed:", error);
+      alert("Database Error: Could not save.");
       return false;
     }
   };
