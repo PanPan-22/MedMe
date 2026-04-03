@@ -1,7 +1,13 @@
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { Link, Stack } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
+
+const dummy = [
+  { id: "1", name: "Medication A" },
+  { id: "2", name: "Medication B" },
+  { id: "3", name: "Medication C" },
+];
 
 export default function HomeScreen() {
   return (
@@ -14,6 +20,17 @@ export default function HomeScreen() {
             <Feather name="moon" size={32} color="#FFB916" />
             <Text className="text-[#FFB916] text-center text-3xl">8:00</Text>
           </View>
+        </View>
+        <View className="bg-white border border-primary rounded-2xl w-full p-2 mb-4">
+          <FlatList
+            data={dummy}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View className="flex-row items-center justify-between border-b border-gray-300 p-2">
+                <Text className="text-lg">{item.name}</Text>
+              </View>
+            )}
+          />
         </View>
         <Link href="/management" push asChild>
           <Pressable className="flex-row items-center justify-center gap-4 bg-primary rounded-xl p-4">
