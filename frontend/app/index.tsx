@@ -6,10 +6,10 @@ import {
   Button,
   FlatList,
   Pressable,
-  ScrollView,
   Text,
-  View,
+  View
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const dummy = [
   { id: "1", name: "Medication A" },
@@ -17,11 +17,11 @@ const dummy = [
   { id: "3", name: "Medication C" },
 ];
 
-const { triggerNotification } = useNotifications();
-
 export default function HomeScreen() {
+  const { triggerNotification } = useNotifications();
   return (
-    <ScrollView className="bg-background p-2">
+    //<SafeAreaView>
+    <SafeAreaView className="bg-background p-2">
       <Stack.Screen options={{ headerShown: true, title: "Home" }} />
       <View className="items-center">
         <View className="flex-row items-center justify-center border border-primary gap-4 p-2 mb-4">
@@ -50,6 +50,6 @@ export default function HomeScreen() {
         </Link>
         <Button title="Trigger Notification" onPress={triggerNotification} />
       </View>
-    </ScrollView>
+    </SafeAreaView>
   );
 }
