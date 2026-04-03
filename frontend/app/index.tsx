@@ -1,13 +1,23 @@
+import { useNotifications } from "@/hooks/use-notifications";
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { Link, Stack } from "expo-router";
-import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  Button,
+  FlatList,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 const dummy = [
   { id: "1", name: "Medication A" },
   { id: "2", name: "Medication B" },
   { id: "3", name: "Medication C" },
 ];
+
+const { triggerNotification } = useNotifications();
 
 export default function HomeScreen() {
   return (
@@ -38,6 +48,7 @@ export default function HomeScreen() {
             <Text className="text-2xl text-white">Medicine Management</Text>
           </Pressable>
         </Link>
+        <Button title="Trigger Notification" onPress={triggerNotification} />
       </View>
     </ScrollView>
   );
