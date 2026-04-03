@@ -30,10 +30,10 @@ export default function ManagementScreen() {
         "INSERT INTO schedule (name, amount, time, note) VALUES (?, ?, ?, ?)",
         [name, parseInt(amount) || 0, time, note],
       );
-
       return true;
     } catch (error) {
-      console.error("Failed to save and schedule:", error);
+      console.error("Insert failed:", error);
+      alert("Database Error: Could not save.");
       return false;
     }
   };
