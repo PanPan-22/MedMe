@@ -64,9 +64,6 @@ export default function ManagementScreen() {
     }
 
     try {
-      // 1. Schedule the notification FIRST to get the ID
-      const notifId = await scheduleMedicationReminder(name, time);
-
       // 2. Insert into SQLite with the notification ID
       await db.runAsync(
         "INSERT INTO schedule (name, amount, time, note, notification_id) VALUES (?, ?, ?, ?, ?)",
