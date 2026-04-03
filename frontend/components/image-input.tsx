@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Tesseract from "tesseract.js";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -182,7 +183,7 @@ const ImageInput = () => {
   };
 
   return (
-    <View>
+    <SafeAreaView>
       {/* <Button title="Save to DB" onPress={handleSave} /> */}
       <Text>Scan now:</Text>
       <TouchableOpacity onPress={takePhoto}>
@@ -217,6 +218,7 @@ const ImageInput = () => {
             <Button
               title="Scan with Google Vision!"
               onPress={async () => {
+                console.log("Scanning with Google Vision...");
                 const text = await scanWithGoogleVision(image);
                 setScannedText(text);
               }}
@@ -233,12 +235,13 @@ const ImageInput = () => {
           <View
             style={[
               styles.buttonContainer,
-              { flexDirection: "row", justifyContent: "space-between" },
+              { flexDirection: "row", justifyContent: "space-between", marginBottom: 50 },
             ]}
           >
             <Button
               title="Parse to JSON"
               onPress={async () => {
+                console.log("Parsing text to JSON with AI...");
                 await handleParseJSON();
               }}
             />
@@ -271,7 +274,7 @@ const ImageInput = () => {
                 {"\n"}
                 Additional: {note?.additional}
               </Text>
-              <View style={[styles.buttonContainer, { marginTop: 20 }]}>
+              <View style={[styles.buttonContainer, { marginTop: 20, marginBottom: 50 }]}>
                 <Button
                   title="Save to DB"
                   onPress={() => note && SteelBallRun(note)}
@@ -281,7 +284,7 @@ const ImageInput = () => {
           )}
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
