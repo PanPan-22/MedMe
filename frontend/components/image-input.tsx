@@ -208,12 +208,13 @@ const ImageInput = () => {
               }}
             />
           </View>
-          {/* <View style={styles.buttonContainer}>
+          <View style={styles.buttonContainer}>
                         <Button title="Scan with Tesseract!" onPress={async () => {
+                            console.log("Scanning with Tesseract...");
                             const text = await scanWithTesseract(image);
                             setScannedText(text);
                         }} />
-                    </View> */}
+                    </View>
           <View style={styles.buttonContainer}>
             <Button
               title="Scan with Google Vision!"
