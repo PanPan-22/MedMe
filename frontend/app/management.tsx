@@ -4,6 +4,7 @@ import { Link, Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Medication {
   id: number;
@@ -59,6 +60,8 @@ export default function ManagementScreen() {
       console.error("Error fetching medications:", error);
     }
   };
+  
+  const insets = useSafeAreaInsets();
 
   return (
     <View className="bg-background p-2 h-full">
@@ -106,7 +109,7 @@ export default function ManagementScreen() {
           )}
         />
       </View>
-      <View className="items-center mt-8">
+      <View className="items-center mt-8" style={{ paddingBottom: insets.bottom }}>
         <Pressable
           className="items-center justify-center bg-primary rounded-xl p-4 w-60"
           onPress={async () => {

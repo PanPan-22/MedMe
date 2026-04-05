@@ -235,7 +235,7 @@ const ImageInput = () => {
           <View
             style={[
               styles.buttonContainer,
-              { flexDirection: "row", justifyContent: "space-between", marginBottom: 50 },
+              { flexDirection: "row", justifyContent: "space-between"},
             ]}
           >
             <Button
@@ -274,7 +274,7 @@ const ImageInput = () => {
                 {"\n"}
                 Additional: {note?.additional}
               </Text>
-              <View style={[styles.buttonContainer, { marginTop: 20, marginBottom: 50 }]}>
+              <View style={[styles.buttonContainer, { marginTop: 20}]}>
                 <Button
                   title="Save to DB"
                   onPress={() => note && SteelBallRun(note)}
