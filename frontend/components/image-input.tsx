@@ -253,6 +253,7 @@ const ImageInput = () => {
                 setScannedText("");
                 setAIRes("");
                 setNote({
+                  id: 0,
                   medicine_name: "",
                   count: 0,
                   type: "",

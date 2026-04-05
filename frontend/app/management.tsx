@@ -1,3 +1,4 @@
+import { clearDatabase, Medication, StartDB } from "@/components/local_db";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
 import { Link, Stack, useFocusEffect } from "expo-router";
@@ -6,13 +7,13 @@ import { useCallback, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-interface Medication {
-  id: number;
-  name: string;
-  amount: number;
-  time: string;
-  note: string;
-}
+// interface Medication {
+//   id: number;
+//   name: string;
+//   amount: number;
+//   time: string;
+//   note: string;
+// }
 
 export default function ManagementScreen() {
   const { colors } = useTheme();
@@ -62,6 +63,8 @@ export default function ManagementScreen() {
   };
   
   const insets = useSafeAreaInsets();
+  const TestData = StartDB();
+  //console.log("TestData from StartDB:", TestData);
 
   return (
     <View className="bg-background p-2 h-full">
@@ -82,7 +85,7 @@ export default function ManagementScreen() {
       </View>
       <View className="flex-1 bg-background p-4">
         <FlatList
-          data={meds}
+          data={TestData.notes}
           keyExtractor={(item) => item.id.toString()}
           ListEmptyComponent={
             <Text className="text-center mt-10 text-gray-500">
@@ -93,16 +96,16 @@ export default function ManagementScreen() {
             <View className="bg-white p-4 mb-3 rounded-2xl border border-primary/20 shadow-sm">
               <View className="flex-row justify-between items-center">
                 <Text className="text-xl font-bold text-primary">
-                  {item.name}
+                  {item.medicine_name}
                 </Text>
                 <Text className="text-secondary font-semibold">
-                  {item.time}
+                  {item.whenToTake}
                 </Text>
               </View>
-              <Text className="text-gray-600 mt-1">Amount: {item.amount}</Text>
-              {item.note ? (
+              <Text className="text-gray-600 mt-1">Amount: {item.count}</Text>
+              {item.additional ? (
                 <Text className="text-gray-400 italic mt-2 text-sm">
-                  "{item.note}"
+                  "{item.additional}"
                 </Text>
               ) : null}
             </View>
@@ -113,8 +116,7 @@ export default function ManagementScreen() {
         <Pressable
           className="items-center justify-center bg-primary rounded-xl p-4 w-60"
           onPress={async () => {
-            await clearAllMeds();
-            await fetchMeds();
+            await clearDatabase();
           }}
         >
           <Text className="text-2xl text-white">Clear</Text>
