@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import * as ImagePicker from "expo-image-picker";
 // import { useSQLiteContext } from 'expo-sqlite';
 import * as SQLite from "expo-sqlite";
+import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
 import {
   Button,
@@ -15,10 +16,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Tesseract from "tesseract.js";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { Medication, saveToDB as SteelBallRun } from "./local_db";
+import { Medication, saveToDB } from "./local_db";
 
 type SQLiteDatabase = SQLite.SQLiteDatabase | null;
 let db: SQLiteDatabase = null;
+let loadingScan = false;
+
+enum ScanMethod {
+  OCRSpace,
+  Tesseract,
+  GoogleVision,
+}
 
 const medicineSchema = z
   .object({
@@ -58,6 +66,7 @@ const TalkToGenAI = async (prompt: string) => {
   }
 };
 const scanText = async (uri: string) => {
+  loadingScan = true;
   try {
     const uriResponse = await fetch(uri);
     const blob = await uriResponse.blob();
@@ -85,6 +94,8 @@ const scanText = async (uri: string) => {
   } catch (error) {
     console.error("scanText failed", error);
     return "Error scanning text from image. Please try again.";
+  } finally {
+    loadingScan = false;
   }
 };
 const scanWithTesseract = async (uri: string) => {
@@ -94,6 +105,7 @@ const scanWithTesseract = async (uri: string) => {
 
 const scanWithGoogleVision = async (uri: string) => {
   const GoogleAPI = "AIzaSyDHUXQcozaiMQubk8DBcClSaI8jzFQNmGY";
+  loadingScan = true;
   try {
     const uriResponse = await fetch(uri);
     const blob = await uriResponse.blob();
@@ -128,6 +140,9 @@ const scanWithGoogleVision = async (uri: string) => {
   } catch (error) {
     console.error("scanWithGoogleVision failed", error);
     return "Error scanning text from image. Please try again.";
+  } finally {
+    console.log("Scan complete");
+    loadingScan = false;
   }
 };
 
@@ -138,6 +153,9 @@ const ImageInput = () => {
   const [loading2, setLoading2] = useState(false); // Parsing
   const [aiRes, setAIRes] = useState("");
   const [note, setNote] = useState<Medication | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const db = useSQLiteContext();
 
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -167,7 +185,33 @@ const ImageInput = () => {
     }
   };
 
+  const handleScan = async (method: ScanMethod) => {
+    setLoading1(true);
+    console.log(`Starting scan with ${ScanMethod[method]}...`);
+    try {
+      let text = "";
+      switch (method) {
+        case ScanMethod.OCRSpace:
+          text = await scanText(image);
+          break;
+        case ScanMethod.Tesseract:
+          text = await scanWithTesseract(image);
+          break;
+        case ScanMethod.GoogleVision:
+          text = await scanWithGoogleVision(image);
+          break;
+      }
+      setScannedText(text);
+    } catch (error) {
+      console.error(`Error scanning with ${ScanMethod[method]}:`, error);
+    } finally {
+      setLoading1(false);
+    }
+  };
+
+
   const handleParseJSON = async () => {
+    setLoading2(true);
     try {
       const res = await TalkToGenAI(
         "Turn this text into JSON format: " + scannedText,
@@ -179,7 +223,10 @@ const ImageInput = () => {
     } catch (err) {
       console.error("Error in TalkToGenAI:", err);
       setAIRes("Error communicating with AI. Please try again.");
+    } finally {
+      setLoading2(false);
     }
+
   };
 
   return (
@@ -202,31 +249,36 @@ const ImageInput = () => {
           <View style={styles.buttonContainer}>
             <Button
               title="Scan!"
+              disabled={loadingScan}
               onPress={async () => {
-                const text = await scanText(image);
-                setScannedText(text);
+                console.log("Scanning with OCRSpace...");
+                handleScan(ScanMethod.OCRSpace);
               }}
             />
           </View>
-          <View style={styles.buttonContainer}>
-                        <Button title="Scan with Tesseract!" onPress={async () => {
-                            console.log("Scanning with Tesseract...");
-                            const text = await scanWithTesseract(image);
-                            setScannedText(text);
-                        }} />
-                    </View>
+          {/* <View style={styles.buttonContainer}>
+            <Button title="Scan with Tesseract!" onPress={async () => {
+              console.log("Scanning with Tesseract...");
+              const text = await scanWithTesseract(image);
+              setScannedText(text);
+            }} />
+          </View> */}
           <View style={styles.buttonContainer}>
             <Button
               title="Scan with Google Vision!"
+              disabled={loadingScan}
               onPress={async () => {
                 console.log("Scanning with Google Vision...");
-                const text = await scanWithGoogleVision(image);
-                setScannedText(text);
+                handleScan(ScanMethod.GoogleVision);
               }}
             />
           </View>
         </View>
       )}
+      {loading1 && <View style={{ justifyContent: "center", alignItems: "center" }}>
+        <Text className="text-2xl font-bold text-primary text-center mt-4">Scanning...</Text>
+        <Image source={{ uri: "https://giffiles.alphacoders.com/763/76339.gif" }} resizeMode="contain" style={{ width: 300, height: 200 }} />
+      </View>}
       {scannedText.length > 0 && (
         <View>
           <Text>Scanned Text:</Text>
@@ -236,11 +288,12 @@ const ImageInput = () => {
           <View
             style={[
               styles.buttonContainer,
-              { flexDirection: "row", justifyContent: "space-between"},
+              { flexDirection: "row", justifyContent: "space-between" },
             ]}
           >
             <Button
               title="Parse to JSON"
+              disabled={loading2}
               onPress={async () => {
                 console.log("Parsing text to JSON with AI...");
                 await handleParseJSON();
@@ -263,6 +316,10 @@ const ImageInput = () => {
               }}
             />
           </View>
+          {loading2 && <View style={{ justifyContent: "center", alignItems: "center" }}>
+            <Text className="text-2xl font-bold text-primary text-center mt-4">Parsing text with AI...</Text>
+            <Image source={{ uri: "https://giffiles.alphacoders.com/763/76335.gif" }} resizeMode="contain" style={{ width: 200, height: 200 }} />
+          </View>}
           {aiRes.length > 0 && (
             <View style={styles.scannedTextContainer}>
               <Text>
@@ -276,12 +333,22 @@ const ImageInput = () => {
                 {"\n"}
                 Additional: {note?.additional}
               </Text>
-              <View style={[styles.buttonContainer, { marginTop: 20}]}>
+              <View style={[styles.buttonContainer, { marginTop: 20 }]}>
                 <Button
                   title="Save to DB"
-                  onPress={() => note && SteelBallRun(note)}
+                  onPress={async () => {
+                    if (note) {
+                      const result = await saveToDB(db, note);
+                      setSuccess(result);
+                    }
+                  }}
                 />
               </View>
+              {success && (
+                <View>
+                  <Text>It's done.</Text>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -302,10 +369,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 10,
     borderRadius: 10,
-    marginTop: 20,
+    margin: 10,
   },
   scannedTextContainer: {
-    marginTop: 20,
+    marginTop: 10,
     borderWidth: 1,
     borderColor: "#808080",
     padding: 10,

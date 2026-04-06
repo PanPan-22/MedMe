@@ -1,4 +1,5 @@
 import * as SQLite from "expo-sqlite";
+import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 
 type SQLiteDatabase = SQLite.SQLiteDatabase | null;
@@ -15,7 +16,7 @@ export interface Medication {
 
 async function openDatabase(): Promise<SQLiteDatabase> {
   try {
-    db = await SQLite.openDatabaseAsync("schedules.db");
+    db = useSQLiteContext();
     // await db.execAsync('DROP TABLE IF EXISTS schedules;'); // DANGEROUS!! USE WHEN YOU WANT TO UPDATE THE SCHEMA AND DON'T CARE ABOUT LOSING DATA!
     await db.execAsync(`CREATE TABLE IF NOT EXISTS schedules (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,15 +34,6 @@ async function openDatabase(): Promise<SQLiteDatabase> {
   }
 }
 
-export async function getDatabase(): Promise<SQLiteDatabase> {
-  if (!db){
-    const database = await openDatabase();
-    if (!database) throw new Error("Failed to open database");
-    db = database;
-  }
-  return db;
-}
-
 const medicineExists = async (medicineName: string): Promise<boolean> => {
   if (!db) return false;
   try {
@@ -56,7 +48,7 @@ const medicineExists = async (medicineName: string): Promise<boolean> => {
   }
 };
 
-const length = async () => {
+export const Length = async (db: any) => {
   if (!db) return 0;
   try {
     const result = await db.getAllAsync('SELECT * FROM schedules')
@@ -69,17 +61,22 @@ const length = async () => {
   }
 }
 
-export const saveToDB = async (note: Medication) => {
+export async function saveToDB(db: any, note: Medication) : Promise<boolean> {
   if (!db) {
     console.log("Medicine already exists or database not initialized");
     return false;
-  };
+  } else if (note.medicine_name.trim() === "") {
+    console.log("Medicine name is empty");
+    return false;
+  }
+  
+  note.id = await Length(db) + 1; // This is a simple way to generate an ID, but it can lead to issues if records are deleted. Consider using AUTOINCREMENT in the database schema for a more robust solution.
   console.log("Inserting medicine note:", note);
-  note.id = await length() + 1; // This is a simple way to generate an ID, but it can lead to issues if records are deleted. Consider using AUTOINCREMENT in the database schema for a more robust solution.
   try {
     await db.runAsync(
-      "INSERT INTO schedules (medicine_name, count, type, whenToTake, additional) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO schedules (id, medicine_name, count, type, whenToTake, additional) VALUES (?, ?, ?, ?, ?, ?)",
       [
+        note.id,
         note.medicine_name,
         note.count,
         note.type,
@@ -95,7 +92,7 @@ export const saveToDB = async (note: Medication) => {
   }
 };
 
-export const clearDatabase = async () => {
+export const clearDatabase = async (db: SQLiteDatabase) => {
   if (!db) return;
   try {
     await db.runAsync("DELETE FROM schedules");
