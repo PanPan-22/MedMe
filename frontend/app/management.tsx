@@ -1,22 +1,25 @@
+import { clearDatabase, Medication } from "@/components/local_db";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
 import { Link, Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { Alert, FlatList, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-interface Medication {
-  id: number;
-  name: string;
-  amount: number;
-  time: string;
-  note: string;
-}
+// interface Medication {
+//   id: number;
+//   name: string;
+//   amount: number;
+//   time: string;
+//   note: string;
+// }
 
-export default function ManagementScreen() {
+export default async function ManagementScreen() {
   const { colors } = useTheme();
   const db = useSQLiteContext();
   const [meds, setMeds] = useState<Medication[]>([]);
+  const [dbEmpty, setDbEmpty] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
@@ -51,14 +54,29 @@ export default function ManagementScreen() {
   const fetchMeds = async () => {
     try {
       // getAllAsync returns an array of objects
+      console.log("Fetching medications from database...");
       const allRows = await db.getAllAsync<Medication>(
-        "SELECT * FROM schedule",
+        "SELECT * FROM schedules",
       );
       setMeds(allRows);
+      setDbEmpty(allRows.length === 0);
     } catch (error) {
       console.error("Error fetching medications:", error);
     }
   };
+
+  const alertClearDatabase = () => {
+  Alert.alert(
+    "Clear Database",
+    "Are you sure you want to clear all medications? This action cannot be undone.",),
+    [
+      { text: "Cancel", style: "cancel" },
+      { text: "Clear", style: "destructive", onPress: async () => await clearDatabase(db) },
+    ],
+    { cancelable: true }
+}
+  
+  const insets = useSafeAreaInsets();
 
   return (
     <View className="bg-background p-2 h-full">
@@ -90,33 +108,31 @@ export default function ManagementScreen() {
             <View className="bg-white p-4 mb-3 rounded-2xl border border-primary/20 shadow-sm">
               <View className="flex-row justify-between items-center">
                 <Text className="text-xl font-bold text-primary">
-                  {item.name}
+                  {item.medicine_name}
                 </Text>
                 <Text className="text-secondary font-semibold">
-                  {item.time}
+                  {item.whenToTake}
                 </Text>
               </View>
-              <Text className="text-gray-600 mt-1">Amount: {item.amount}</Text>
-              {item.note ? (
+              <Text className="text-gray-600 mt-1">Amount: {item.count}</Text>
+              {item.additional ? (
                 <Text className="text-gray-400 italic mt-2 text-sm">
-                  "{item.note}"
+                  "{item.additional}"
                 </Text>
               ) : null}
             </View>
           )}
         />
       </View>
-      <View className="items-center mt-8">
-        <Pressable
-          className="items-center justify-center bg-primary rounded-xl p-4 w-60"
-          onPress={async () => {
-            await clearAllMeds();
-            await fetchMeds();
-          }}
-        >
-          <Text className="text-2xl text-white">Clear</Text>
+      {dbEmpty ? null : (
+        <View className="items-center mt-8" style={{ paddingBottom: insets.bottom }}>
+          <Pressable
+            className="items-center justify-center bg-primary rounded-xl p-4 w-60"
+            onPress={alertClearDatabase}
+          >
+            <Text className="text-2xl text-white">Clear</Text>
         </Pressable>
-      </View>
+      </View>)}
     </View>
   );
 }

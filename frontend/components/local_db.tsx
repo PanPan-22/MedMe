@@ -1,12 +1,12 @@
 import * as SQLite from "expo-sqlite";
+import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
-import { Button, FlatList, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 type SQLiteDatabase = SQLite.SQLiteDatabase | null;
 let db: SQLiteDatabase = null;
 
 export interface Medication {
+  id: number;
   medicine_name: string;
   count: number;
   type: string;
@@ -16,9 +16,10 @@ export interface Medication {
 
 async function openDatabase(): Promise<SQLiteDatabase> {
   try {
-    db = await SQLite.openDatabaseAsync("medicines.db");
-    await db.execAsync(`CREATE TABLE IF NOT EXISTS medicines (
-            medicine_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    db = useSQLiteContext();
+    // await db.execAsync('DROP TABLE IF EXISTS schedules;'); // DANGEROUS!! USE WHEN YOU WANT TO UPDATE THE SCHEMA AND DON'T CARE ABOUT LOSING DATA!
+    await db.execAsync(`CREATE TABLE IF NOT EXISTS schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             medicine_name TEXT NOT NULL,
             count INTEGER,
             type TEXT,
@@ -37,7 +38,7 @@ const medicineExists = async (medicineName: string): Promise<boolean> => {
   if (!db) return false;
   try {
     const result = await db.getFirstAsync(
-      "SELECT medicine_id FROM medicines WHERE medicine_name = ?",
+      "SELECT medicine_id FROM schedules WHERE medicine_name = ?",
       [medicineName],
     );
     return result ? true : false;
@@ -47,12 +48,35 @@ const medicineExists = async (medicineName: string): Promise<boolean> => {
   }
 };
 
-export const saveToDB = async (note: Medication) => {
-  if (!db || (await medicineExists(note.medicine_name))) return;
+export const Length = async (db: any) => {
+  if (!db) return 0;
+  try {
+    const result = await db.getAllAsync('SELECT * FROM schedules')
+    console.log("Current number of schedules in database:", result.length);
+    return result.length;
+  }
+  catch (error) {
+    console.error("Error getting medicine count:", error);
+    return 0;
+  }
+}
+
+export async function saveToDB(db: any, note: Medication) : Promise<boolean> {
+  if (!db) {
+    console.log("Medicine already exists or database not initialized");
+    return false;
+  } else if (note.medicine_name.trim() === "") {
+    console.log("Medicine name is empty");
+    return false;
+  }
+  
+  note.id = await Length(db) + 1; // This is a simple way to generate an ID, but it can lead to issues if records are deleted. Consider using AUTOINCREMENT in the database schema for a more robust solution.
+  console.log("Inserting medicine note:", note);
   try {
     await db.runAsync(
-      "INSERT INTO medicines (medicine_name, count, type, whenToTake, additional) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO schedules (id, medicine_name, count, type, whenToTake, additional) VALUES (?, ?, ?, ?, ?, ?)",
       [
+        note.id,
         note.medicine_name,
         note.count,
         note.type,
@@ -61,8 +85,20 @@ export const saveToDB = async (note: Medication) => {
       ],
     );
     console.log("Medicine note inserted successfully");
+    return true;
   } catch (error) {
     console.error("Error inserting medicine note:", error);
+    return false;
+  }
+};
+
+export const clearDatabase = async (db: SQLiteDatabase) => {
+  if (!db) return;
+  try {
+    await db.runAsync("DELETE FROM schedules");
+    console.log("Database cleared successfully");
+  } catch (error) {
+    console.error("Error clearing database:", error);
   }
 };
 
@@ -73,42 +109,13 @@ const StartDB = () => {
     if (!db) return;
     try {
       const allNotes: Medication[] = await db.getAllAsync(
-        "SELECT * FROM medicines",
+        "SELECT * FROM schedules",
       );
+      // console.log("Fetched notes from database:", allNotes);
       setNotes(allNotes);
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching notes:", error);
-    }
-  };
-
-  const insertMedicineNote = async (note: Medication) => {
-    if (!db || (await medicineExists(note.medicine_name))) return;
-    try {
-      await db.runAsync(
-        "INSERT INTO medicines (medicine_name, count, type, whenToTake, additional) VALUES (?, ?, ?, ?, ?)",
-        [
-          note.medicine_name,
-          note.count,
-          note.type,
-          note.whenToTake,
-          note.additional,
-        ],
-      );
-      await fetchNotes();
-      console.log("Medicine note inserted successfully");
-    } catch (error) {
-      console.error("Error inserting medicine note:", error);
-    }
-  };
-
-  const clearDatabase = async () => {
-    if (!db) return;
-    try {
-      await db.runAsync("DELETE FROM medicines");
-      await fetchNotes();
-      console.log("Database cleared successfully");
-    } catch (error) {
-      console.error("Error clearing database:", error);
     }
   };
 
@@ -116,49 +123,13 @@ const StartDB = () => {
     openDatabase()
       .then(() => {
         fetchNotes();
-        setLoading(false);
+        console.log("Dokkan notes:", notes);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  return (
-    <SafeAreaView>
-      <Text>Medicine Notes</Text>
-      <View style={{ marginTop: 20 }}>
-        <Button
-          title="Clear Database"
-          onPress={clearDatabase}
-          color="#ff2400"
-        />
-      </View>
-      {loading ? (
-        <Text>Loading...</Text>
-      ) : (
-        <FlatList
-          data={notes}
-          keyExtractor={(item) => item.medicine_name}
-          renderItem={({ item }) => (
-            <View
-              style={{
-                padding: 10,
-                borderBottomWidth: 1,
-                borderBottomColor: "#ccc",
-              }}
-            >
-              <Text style={{ fontSize: 18, fontWeight: "bold" }}>
-                {item.medicine_name}
-              </Text>
-              <Text>Count: {item.count}</Text>
-              <Text>Type: {item.type}</Text>
-              <Text>When to Take: {item.whenToTake}</Text>
-              <Text>Additional: {item.additional}</Text>
-            </View>
-          )}
-          ListEmptyComponent={<Text>No medicines found.</Text>}
-        />
-      )}
-    </SafeAreaView>
-  );
+  return {notes, loading};
 };
 
 export { StartDB };
+
