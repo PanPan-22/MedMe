@@ -109,7 +109,7 @@ export default function ManagementScreen() {
           </Link>
         </View>
       </View>
-      <View className="flex-1 w-full">
+      <View className="w-full">
         <FlatList
           data={meds}
           keyExtractor={(item) => item.id.toString()}
@@ -136,19 +136,18 @@ export default function ManagementScreen() {
           )}
         />
       </View>
-      {dbEmpty ? null : (
-        <View
-          className="items-center mt-8"
-          style={{ paddingBottom: insets.bottom }}
+      
+      {!dbEmpty && (<View
+        className="items-center mt-8"
+        style={{ paddingBottom: insets.bottom }}
+      >
+        <Pressable
+          className="items-center justify-center bg-primary rounded-xl p-4 w-60"
+          onPress={alertClearDatabase}
         >
-          <Pressable
-            className="items-center justify-center bg-primary rounded-xl p-4 w-60"
-            onPress={alertClearDatabase}
-          >
-            <Text className="text-2xl text-white">Clear</Text>
-          </Pressable>
-        </View>
-      )}
+          <Text className="text-2xl text-white">Clear</Text>
+        </Pressable>
+      </View>)}
     </View>
   );
 }

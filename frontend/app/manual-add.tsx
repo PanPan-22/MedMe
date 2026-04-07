@@ -3,6 +3,7 @@ import { router, Stack } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 export default function ManagementScreen() {
   const [name, setName] = useState("");
@@ -10,8 +11,20 @@ export default function ManagementScreen() {
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
   const [meds, setMeds] = useState<Medication[]>([]);
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  // I need to make a list of times.
+  const [times, setTimes] = useState<string[]>([]);
 
   const db = useSQLiteContext();
+
+  const handleConfirm = (date: Date) => {
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    
+    setTimes([...times, `${hours}:${minutes}`]);
+    setTime(times.join(", ")); // Update the time input to show all selected times
+    setDatePickerVisibility(false);
+  }
 
   return (
     <ScrollView className="bg-background px-4 pt-4 h-full">
@@ -48,6 +61,23 @@ export default function ManagementScreen() {
           placeholderTextColor="#888888"
           className="text-primary bg-white border border-primary rounded-2xl px-3 text-base h-12"
         />
+        <DateTimePickerModal
+          isVisible={isDatePickerVisible} // You can add state to control visibility if you want
+          mode="time"
+          onConfirm={handleConfirm}
+          onCancel={() => {console.log("Cancelled time picker"); setDatePickerVisibility(false);}}
+        />
+
+      </View>
+      <View>
+        <Pressable
+          className="items-center justify-center bg-primary rounded-xl p-4"
+          onPress={() => setDatePickerVisibility(true)}>
+          <Text className="text-base text-white">
+            Pick Date & Time
+          </Text>
+        </Pressable>
+        <Text>{time}</Text>
       </View>
       <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
         <Text className="text-2xl text-primary">Additional Note</Text>
