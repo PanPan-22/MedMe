@@ -1,10 +1,10 @@
 import { clearDatabase, Medication } from "@/components/local_db";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
-import { Link, Stack, useFocusEffect } from "expo-router";
+import { Link, router, Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import { Alert, FlatList, Pressable, Text, View } from "react-native";
+import { Alert, FlatList, Image, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // interface Medication {
@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 //   note: string;
 // }
 
-export default async function ManagementScreen() {
+export default function ManagementScreen() {
   const { colors } = useTheme();
   const db = useSQLiteContext();
   const [meds, setMeds] = useState<Medication[]>([]);
@@ -66,24 +66,38 @@ export default async function ManagementScreen() {
   };
 
   const alertClearDatabase = () => {
-  Alert.alert(
-    "Clear Database",
-    "Are you sure you want to clear all medications? This action cannot be undone.",),
-    [
-      { text: "Cancel", style: "cancel" },
-      { text: "Clear", style: "destructive", onPress: async () => await clearDatabase(db) },
-    ],
-    { cancelable: true }
-}
-  
+    (Alert.alert(
+      "Clear Database",
+      "Are you sure you want to clear all medications? This action cannot be undone.",
+    ),
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: async () => await clearDatabase(db),
+        },
+      ],
+      { cancelable: true });
+  };
+
   const insets = useSafeAreaInsets();
 
   return (
-    <View className="bg-background p-2 h-full">
+    <View className="bg-background pt-4 px-4 h-full">
       <View className="items-center">
         <Stack.Screen options={{ headerShown: true, title: "Management" }} />
         <View className="flex-row items-center justify-between border border-primary p-2 mb-2 w-full">
-          <Text className="text-2xl text-primary">Your Medication</Text>
+          <View className="flex-row items-center gap-4">
+            <Pressable onPress={() => router.back()}>
+              <Ionicons
+                name="arrow-back-outline"
+                size={24}
+                color={colors.text}
+              />
+            </Pressable>
+            <Text className="text-2xl text-primary">Your Medication</Text>
+          </View>
           <Link href="/add-schedule" push asChild>
             <Pressable className="flex-row items-center justify-center">
               <Ionicons
@@ -95,7 +109,7 @@ export default async function ManagementScreen() {
           </Link>
         </View>
       </View>
-      <View className="flex-1 bg-background p-4">
+      <View className="flex-1 w-full">
         <FlatList
           data={meds}
           keyExtractor={(item) => item.id.toString()}
@@ -105,34 +119,36 @@ export default async function ManagementScreen() {
             </Text>
           }
           renderItem={({ item }) => (
-            <View className="bg-white p-4 mb-3 rounded-2xl border border-primary/20 shadow-sm">
-              <View className="flex-row justify-between items-center">
-                <Text className="text-xl font-bold text-primary">
+            <Link href={`/management/${item.id}`} push asChild>
+              <Pressable className="p-2 mb-3 border-b w-full border-gray-300 flex-row items-center justify-between">
+                <Text
+                  className="text-xl text-primary truncate w-4/5"
+                  numberOfLines={1}
+                >
                   {item.medicine_name}
                 </Text>
-                <Text className="text-secondary font-semibold">
-                  {item.whenToTake}
-                </Text>
-              </View>
-              <Text className="text-gray-600 mt-1">Amount: {item.count}</Text>
-              {item.additional ? (
-                <Text className="text-gray-400 italic mt-2 text-sm">
-                  "{item.additional}"
-                </Text>
-              ) : null}
-            </View>
+                <Image
+                  style={{ width: 50, height: 50, borderRadius: 5 }}
+                  source={require("@/assets/images/tempura.jpg")}
+                />
+              </Pressable>
+            </Link>
           )}
         />
       </View>
       {dbEmpty ? null : (
-        <View className="items-center mt-8" style={{ paddingBottom: insets.bottom }}>
+        <View
+          className="items-center mt-8"
+          style={{ paddingBottom: insets.bottom }}
+        >
           <Pressable
             className="items-center justify-center bg-primary rounded-xl p-4 w-60"
             onPress={alertClearDatabase}
           >
             <Text className="text-2xl text-white">Clear</Text>
-        </Pressable>
-      </View>)}
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }

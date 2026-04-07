@@ -1,8 +1,11 @@
 import { initializeDatabase } from "@/db/initialize";
-import { Stack } from "expo-router";
+import Feather from "@expo/vector-icons/Feather";
+import { Link, Stack } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar"; // Import from here
 import { useColorScheme } from "nativewind";
+import { Pressable, Text } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import "../global.css";
 
 // Notifications.setNotificationHandler({
@@ -25,20 +28,21 @@ export default function RootLayout() {
       <SQLiteProvider databaseName="myDatabase.db" onInit={initializeDatabase}>
         <Stack
           screenOptions={{
-            // header: () => (
-            //   <SafeAreaView className="flex-row h-20 w-full items-center justify-between p-2 bg-primary">
-            //     <Ionicons name="arrow-back" size={24} color="white" />
-            //     <Text className="text-white text-xl">Chaiyaporn</Text>
-            //     <Image
-            //       source={require("../assets/images/tempura.jpg")}
-            //       style={{
-            //         width: 40,
-            //         height: 40,
-            //         borderRadius: 20,
-            //       }}
-            //     />
-            //   </SafeAreaView>
-            // ),
+            header: () => (
+              <SafeAreaView className="flex-row w-full h-24 items-center justify-between p-4 bg-primary">
+                <Text
+                  className="text-white text-xl truncate w-1/2"
+                  numberOfLines={1}
+                >
+                  ชัยพร ศรเกษม
+                </Text>
+                <Link href="/settings" push asChild>
+                  <Pressable>
+                    <Feather name="settings" size={24} color="white" />
+                  </Pressable>
+                </Link>
+              </SafeAreaView>
+            ),
             headerShown: true,
           }}
         />

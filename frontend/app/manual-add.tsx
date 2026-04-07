@@ -14,58 +14,59 @@ export default function ManagementScreen() {
   const db = useSQLiteContext();
 
   return (
-      <ScrollView className="bg-background p-2">
-        <Stack.Screen options={{ headerShown: true, title: "Manual Add" }} />
-        <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
-          <Text className="text-2xl text-primary">Medication name</Text>
-          <TextInput
-            value={name}
-            onChangeText={(newName) => setName(newName)}
-            keyboardType="default"
-            placeholder="Medication name"
-            placeholderTextColor="#888888"
-            className="text-primary bg-white border border-primary rounded-2xl px-3 text-base h-12"
-          />
-        </View>
-        <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
-          <Text className="text-2xl text-primary">Amount</Text>
-          <TextInput
-            value={amount}
-            onChangeText={(newAmount) => setAmount(newAmount)}
-            keyboardType="numeric"
-            placeholder="Amount"
-            placeholderTextColor="#888888"
-            className="text-primary bg-white border border-primary rounded-2xl px-3 text-base h-12"
-          />
-        </View>
-        <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
-          <Text className="text-2xl text-primary">Time</Text>
-          <TextInput
-            value={time}
-            onChangeText={(newTime) => setTime(newTime)}
-            keyboardType="default"
-            placeholder="Time"
-            placeholderTextColor="#888888"
-            className="text-primary bg-white border border-primary rounded-2xl px-3 text-base h-12"
-          />
-        </View>
-        <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
-          <Text className="text-2xl text-primary">Additional Note</Text>
-          <TextInput
-            value={note}
-            onChangeText={(newNote) => setNote(newNote)}
-            multiline={true}
-            keyboardType="default"
-            placeholder="Additional Note"
-            placeholderTextColor="#888888"
-            textAlignVertical="top"
-            className="text-primary align-text-top text-base h-40 bg-white border border-primary rounded-2xl px-3 web:pt-3"
-          />
-        </View>
-        <View className="items-center mt-8">
-          <Pressable
-            className="items-center justify-center bg-primary rounded-xl p-4 w-60"
-            onPress={async () => {
+    <ScrollView className="bg-background px-4 pt-4 h-full">
+      <Stack.Screen options={{ headerShown: true, title: "Manual Add" }} />
+      <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
+        <Text className="text-2xl text-primary">Medication name</Text>
+        <TextInput
+          value={name}
+          onChangeText={(newName) => setName(newName)}
+          keyboardType="default"
+          placeholder="Medication name"
+          placeholderTextColor="#888888"
+          className="text-primary bg-white border border-primary rounded-2xl px-3 text-base h-12"
+        />
+      </View>
+      <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
+        <Text className="text-2xl text-primary">Amount</Text>
+        <TextInput
+          value={amount}
+          onChangeText={(newAmount) => setAmount(newAmount)}
+          keyboardType="numeric"
+          placeholder="Amount"
+          placeholderTextColor="#888888"
+          className="text-primary bg-white border border-primary rounded-2xl px-3 text-base h-12"
+        />
+      </View>
+      <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
+        <Text className="text-2xl text-primary">Time</Text>
+        <TextInput
+          value={time}
+          onChangeText={(newTime) => setTime(newTime)}
+          keyboardType="default"
+          placeholder="Time"
+          placeholderTextColor="#888888"
+          className="text-primary bg-white border border-primary rounded-2xl px-3 text-base h-12"
+        />
+      </View>
+      <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
+        <Text className="text-2xl text-primary">Additional Note</Text>
+        <TextInput
+          value={note}
+          onChangeText={(newNote) => setNote(newNote)}
+          multiline={true}
+          keyboardType="default"
+          placeholder="Additional Note"
+          placeholderTextColor="#888888"
+          textAlignVertical="top"
+          className="text-primary align-text-top text-base h-40 bg-white border border-primary rounded-2xl px-3 web:pt-3"
+        />
+      </View>
+      <View className="items-center mt-8">
+        <Pressable
+          className="items-center justify-center bg-primary rounded-xl p-4 w-60"
+          onPress={
+            async () => {
               const success = await addMedicine(db, {
                 id: 0, // ID will be auto-generated by the database
                 medicine_name: name.trim(),
@@ -78,17 +79,17 @@ export default function ManagementScreen() {
                 router.back();
               }
             }
-              // else {
-              //   console.error(
-              //     "Failed to add medication. Please check the inputs and try again.",
-              //   );
-              //   // Stay on the screen and let the user fix the issue
-              // }
-            }
-          >
-            <Text className="text-2xl text-white">Submit</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
+            // else {
+            //   console.error(
+            //     "Failed to add medication. Please check the inputs and try again.",
+            //   );
+            //   // Stay on the screen and let the user fix the issue
+            // }
+          }
+        >
+          <Text className="text-2xl text-white">Submit</Text>
+        </Pressable>
+      </View>
+    </ScrollView>
   );
 }
