@@ -1,4 +1,4 @@
-import { clearDatabase, Medication } from "@/components/local_db";
+import { clearDatabase, Medication } from "@/components/local-db";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
 import { Link, router, Stack, useFocusEffect } from "expo-router";
@@ -66,19 +66,21 @@ export default function ManagementScreen() {
   };
 
   const alertClearDatabase = () => {
-    (Alert.alert(
+    Alert.alert(
       "Clear Database",
       "Are you sure you want to clear all medications? This action cannot be undone.",
-    ),
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Clear",
           style: "destructive",
-          onPress: async () => await clearDatabase(db),
+          onPress: async () => {
+            await clearDatabase(db);
+            await fetchMeds();
+          },
         },
       ],
-      { cancelable: true });
+    );
   };
 
   const insets = useSafeAreaInsets();
@@ -138,18 +140,20 @@ export default function ManagementScreen() {
           )}
         />
       </View>
-      
-      {!dbEmpty && (<View
-        className="items-center mt-8"
-        style={{ paddingBottom: insets.bottom }}
-      >
-        <Pressable
-          className="items-center justify-center bg-primary rounded-xl p-4 w-60"
-          onPress={alertClearDatabase}
+
+      {!dbEmpty && (
+        <View
+          className="items-center mt-8"
+          style={{ paddingBottom: insets.bottom }}
         >
-          <Text className="text-2xl text-white">Clear</Text>
-        </Pressable>
-      </View>)}
+          <Pressable
+            className="items-center justify-center bg-primary rounded-xl p-4 w-60"
+            onPress={alertClearDatabase}
+          >
+            <Text className="text-2xl text-white">Clear</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }

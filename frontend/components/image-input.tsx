@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Tesseract from "tesseract.js";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { Medication, saveToDB } from "./local_db";
+import { Medication, saveToDB } from "./local-db";
 
 type SQLiteDatabase = SQLite.SQLiteDatabase | null;
 let db: SQLiteDatabase = null;
@@ -209,7 +209,6 @@ const ImageInput = () => {
     }
   };
 
-
   const handleParseJSON = async () => {
     setLoading2(true);
     try {
@@ -226,7 +225,6 @@ const ImageInput = () => {
     } finally {
       setLoading2(false);
     }
-
   };
 
   return (
@@ -275,10 +273,18 @@ const ImageInput = () => {
           </View>
         </View>
       )}
-      {loading1 && <View style={{ justifyContent: "center", alignItems: "center" }}>
-        <Text className="text-2xl font-bold text-primary text-center mt-4">Scanning...</Text>
-        <Image source={{ uri: "https://giffiles.alphacoders.com/763/76339.gif" }} resizeMode="contain" style={{ width: 300, height: 200 }} />
-      </View>}
+      {loading1 && (
+        <View style={{ justifyContent: "center", alignItems: "center" }}>
+          <Text className="text-2xl font-bold text-primary text-center mt-4">
+            Scanning...
+          </Text>
+          <Image
+            source={{ uri: "https://giffiles.alphacoders.com/763/76339.gif" }}
+            resizeMode="contain"
+            style={{ width: 300, height: 200 }}
+          />
+        </View>
+      )}
       {scannedText.length > 0 && (
         <View>
           <Text>Scanned Text:</Text>
@@ -316,10 +322,20 @@ const ImageInput = () => {
               }}
             />
           </View>
-          {loading2 && <View style={{ justifyContent: "center", alignItems: "center" }}>
-            <Text className="text-2xl font-bold text-primary text-center mt-4">Parsing text with AI...</Text>
-            <Image source={{ uri: "https://giffiles.alphacoders.com/763/76335.gif" }} resizeMode="contain" style={{ width: 200, height: 200 }} />
-          </View>}
+          {loading2 && (
+            <View style={{ justifyContent: "center", alignItems: "center" }}>
+              <Text className="text-2xl font-bold text-primary text-center mt-4">
+                Parsing text with AI...
+              </Text>
+              <Image
+                source={{
+                  uri: "https://giffiles.alphacoders.com/763/76335.gif",
+                }}
+                resizeMode="contain"
+                style={{ width: 200, height: 200 }}
+              />
+            </View>
+          )}
           {aiRes.length > 0 && (
             <View style={styles.scannedTextContainer}>
               <Text>

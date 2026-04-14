@@ -1,9 +1,10 @@
-import { Medication } from "@/components/local_db";
+import { Medication } from "@/components/local-db";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 export default function individualMedicationScreen() {
   console.log("Rendering individual medication screen");
@@ -33,6 +34,14 @@ export default function individualMedicationScreen() {
   }, []);
   return (
     <View className="bg-background px-4 pt-4 h-full">
+      <View className="flex-row items-center justify-between p-2 mb-2 w-full">
+        <View className="flex-row items-center gap-4">
+          <Pressable onPress={() => router.back()}>
+            <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+          </Pressable>
+          <Text className="text-2xl text-primary">Add schedule</Text>
+        </View>
+      </View>
       <Text>
         {med?.medicine_name}
         {`\n`}
