@@ -1,12 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
 import { router, Stack } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
   return (
-    <View className="items-center">
+    <ScrollView className="bg-background px-4 pt-4 h-full">
       <Stack.Screen options={{ headerShown: true, title: "Settings" }} />
 
       <View className="flex-row items-center gap-4">
@@ -15,6 +15,6 @@ export default function SettingsScreen() {
         </Pressable>
         <Text className="text-2xl text-primary">Settings</Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }

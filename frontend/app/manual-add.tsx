@@ -1,4 +1,6 @@
 import { saveToDB as addMedicine, Medication } from "@/components/local_db";
+import Ionicons from "@expo/vector-icons/build/Ionicons";
+import { useTheme } from "@react-navigation/native";
 import { router, Stack } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
@@ -6,6 +8,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 export default function ManagementScreen() {
+  const { colors } = useTheme();
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [time, setTime] = useState("");
@@ -29,6 +32,14 @@ export default function ManagementScreen() {
   return (
     <ScrollView className="bg-background px-4 pt-4 h-full">
       <Stack.Screen options={{ headerShown: true, title: "Manual Add" }} />
+      <View className="flex-row items-center justify-between p-2 mb-2 w-full">
+        <View className="flex-row items-center gap-4">
+          <Pressable onPress={() => router.back()}>
+            <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+          </Pressable>
+          <Text className="text-2xl text-primary">Add medication</Text>
+        </View>
+      </View>
       <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
         <Text className="text-2xl text-primary">Medication name</Text>
         <TextInput

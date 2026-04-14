@@ -17,7 +17,7 @@ export default function HomeScreen() {
     <View className="bg-background pt-4 px-4 h-full">
       <Stack.Screen options={{ headerShown: true, title: "Home" }} />
       <View className="items-center">
-        <View className="flex-row items-center justify-between border border-primary gap-4 p-2 mb-4 w-full mx-4">
+        <View className="flex-row items-center justify-between gap-4 p-2 mb-4 w-full mx-4">
           <Text className="text-3xl text-primary">Next Medication</Text>
           <View className="flex-row border-2 border-[#FFB916] bg-amber-50 rounded-full items-center justify-center gap-2 px-3 py-1">
             <Feather name="moon" size={32} color="#FFB916" />

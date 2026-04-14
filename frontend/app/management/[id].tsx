@@ -25,16 +25,22 @@ export default function individualMedicationScreen() {
     } catch (error) {
       console.error("Skill issues", error);
     }
-  }
+  };
 
   useEffect(() => {
     console.log("Fetching medication with ID:", id);
     fetchMedication();
   }, []);
-  return <View className="bg-background px-4 pt-4 h-full">
-    <Text>
-      {med?.medicine_name}{`\n`}
-      {med?.count}{`\n`}
-      {med?.whenToTake}{`\n`}</Text>
-  </View>;
+  return (
+    <View className="bg-background px-4 pt-4 h-full">
+      <Text>
+        {med?.medicine_name}
+        {`\n`}
+        {med?.count}
+        {`\n`}
+        {med?.whenToTake}
+        {`\n`}
+      </Text>
+    </View>
+  );
 }

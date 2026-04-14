@@ -87,7 +87,7 @@ export default function ManagementScreen() {
     <View className="bg-background pt-4 px-4 h-full">
       <View className="items-center">
         <Stack.Screen options={{ headerShown: true, title: "Management" }} />
-        <View className="flex-row items-center justify-between border border-primary p-2 mb-2 w-full">
+        <View className="flex-row items-center justify-between p-2 mb-2 w-full">
           <View className="flex-row items-center gap-4">
             <Pressable onPress={() => router.back()}>
               <Ionicons
@@ -118,9 +118,11 @@ export default function ManagementScreen() {
               No medications added yet.
             </Text>
           }
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <Link href={`/management/${item.id}`} push asChild>
-              <Pressable className="p-2 mb-3 border-b w-full border-gray-300 flex-row items-center justify-between">
+              <Pressable
+                className={`p-2 ${index === 0 ? "border-y" : "border-b"} w-full border-gray-300 flex-row items-center justify-between`}
+              >
                 <Text
                   className="text-xl text-primary truncate w-4/5"
                   numberOfLines={1}

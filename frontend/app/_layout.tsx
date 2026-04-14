@@ -44,6 +44,7 @@ export default function RootLayout() {
               </SafeAreaView>
             ),
             headerShown: true,
+            animation: "default",
           }}
         />
       </SQLiteProvider>
