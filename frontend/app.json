@@ -57,7 +57,17 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/audios/universfield-023.wav",
+            "./assets/audios/universfield-029.wav"
+          ]
+        }
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

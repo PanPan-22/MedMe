@@ -18,7 +18,7 @@ export default function AddMedicineScreen() {
     return () => unsubscribe();
   }, []);
   return (
-    <ScrollView className="bg-background p-2">
+    <ScrollView className="bg-background px-4 pt-4 h-full">
       <Stack.Screen options={{ headerShown: true, title: "Add Schedule" }} />
       <View className="flex-row items-center justify-between p-2 mb-2 w-full">
         <View className="flex-row items-center gap-4">
