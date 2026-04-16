@@ -1,0 +1,20 @@
+{
+  "next_med": "Next Medication",
+  "medicine_management": "Medicine Management",
+  "your_medication": "Your Medication",
+  "record": "Record",
+  "settings": "Settings",
+  "language_heading": "Language",
+  "appearance_heading": "Appearance",
+  "light_mode": "Light",
+  "dark_mode": "Dark",
+  "add_schedule": "Add Schedule",
+  "read_label": "Read Label",
+  "fill_field": "Fill Schedule",
+  "medication_name": "Medication Name",
+  "amount": "Amount",
+  "schedule": "Schedule",
+  "additional_notes": "Additional Notes",
+  "save": "Save",
+  "add_time": "Add"
+}

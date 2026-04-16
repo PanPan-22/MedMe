@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import "../global.css";
+import "../i18n";
 
 export default function RootLayout() {
   const { colorScheme, setColorScheme } = useColorScheme();

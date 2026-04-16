@@ -5,10 +5,12 @@ import { useTheme } from "@react-navigation/native";
 import { router, Stack } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 export default function ManaualAddScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const { showToast } = useToast();
   const [name, setName] = useState("");
@@ -46,11 +48,11 @@ export default function ManaualAddScreen() {
           <Pressable onPress={() => router.back()}>
             <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
           </Pressable>
-          <Text className="text-2xl text-primary">Add medication</Text>
+          <Text className="text-2xl text-primary">{t("fill_field")}</Text>
         </View>
       </View>
       <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
-        <Text className="text-xl text-primary">Medication name</Text>
+        <Text className="text-xl text-primary">{t("medication_name")}</Text>
         <TextInput
           value={name}
           onChangeText={(newName) => setName(newName)}
@@ -61,7 +63,7 @@ export default function ManaualAddScreen() {
         />
       </View>
       <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
-        <Text className="text-xl text-primary">Amount</Text>
+        <Text className="text-xl text-primary">{t("amount")}</Text>
         <TextInput
           value={amount}
           onChangeText={(newAmount) => setAmount(newAmount)}
@@ -72,7 +74,7 @@ export default function ManaualAddScreen() {
         />
       </View>
       <View className="gap-2 p-2 mb-2 w-full">
-        <Text className="text-xl text-primary">Schedule</Text>
+        <Text className="text-xl text-primary">{t("schedule")}</Text>
 
         <View className="flex-row flex-wrap gap-2 items-center">
           {times.map((t, index) => (
@@ -94,7 +96,9 @@ export default function ManaualAddScreen() {
             onPress={() => setDatePickerVisibility(true)}
           >
             <Ionicons name="add" size={18} color={colors.text} />
-            <Text className="text-primary font-medium ml-1">Add</Text>
+            <Text className="text-primary font-medium ml-1">
+              {t("add_time")}
+            </Text>
           </Pressable>
         </View>
 
@@ -106,7 +110,7 @@ export default function ManaualAddScreen() {
         />
       </View>
       <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
-        <Text className="text-xl text-primary">Additional Note</Text>
+        <Text className="text-xl text-primary">{t("additional_notes")}</Text>
         <TextInput
           value={note}
           onChangeText={(newNote) => setNote(newNote)}
@@ -138,7 +142,7 @@ export default function ManaualAddScreen() {
             }
           }}
         >
-          <Text className="text-2xl text-white">Submit</Text>
+          <Text className="text-2xl text-white">{t("save")}</Text>
         </Pressable>
       </View>
     </ScrollView>

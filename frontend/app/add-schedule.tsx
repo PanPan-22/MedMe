@@ -5,9 +5,11 @@ import NetInfo from "@react-native-community/netinfo";
 import { useTheme } from "@react-navigation/native";
 import { Link, router, Stack } from "expo-router";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 export default function AddMedicineScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const [isConnected, setIsConnected] = useState<boolean | null>(true);
 
@@ -25,7 +27,7 @@ export default function AddMedicineScreen() {
           <Pressable onPress={() => router.back()}>
             <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
           </Pressable>
-          <Text className="text-2xl text-primary">Add schedule</Text>
+          <Text className="text-2xl text-primary">{t("add_schedule")}</Text>
         </View>
       </View>
       <View className="flex-column items-center justify-around gap-4 p-2 mb-4 w-full">
@@ -36,13 +38,15 @@ export default function AddMedicineScreen() {
           disabled={!isConnected} // Disable the link if offline
         >
           <Pressable
-            className={`flex-column gap-8 items-center justify-center w-full h-[20rem] rounded-3xl ${
+            className={`flex-column items-center justify-center w-full h-[20rem] rounded-3xl pt-4 ${
               isConnected ? "bg-primary" : "bg-gray-400"
             }`}
           >
             <Feather name="camera" size={120} color="white" />
             <View className="items-center">
-              <Text className="text-white text-6xl">Read Label</Text>
+              <Text className="text-white text-6xl leading-[90px]">
+                {t("read_label")}
+              </Text>
               {!isConnected && (
                 <Text className="text-white text-xl mt-2">
                   No internet connection
@@ -52,9 +56,11 @@ export default function AddMedicineScreen() {
           </Pressable>
         </Link>
         <Link href="/manual-add" push asChild>
-          <Pressable className="flex-column gap-8 items-center justify-center bg-primary w-full h-[20rem] rounded-3xl">
+          <Pressable className="flex-column items-center justify-center bg-primary w-full h-[20rem] rounded-3xl pt-4">
             <FontAwesome name="calendar" size={120} color="white" />
-            <Text className="text-white text-6xl">Fill Field</Text>
+            <Text className="text-white text-6xl leading-[90px]">
+              {t("fill_field")}
+            </Text>
           </Pressable>
         </Link>
       </View>

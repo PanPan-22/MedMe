@@ -2,9 +2,11 @@ import ImageInput from "@/components/image-input";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
 import { router, Stack } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 export default function MedicineScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   return (
     <ScrollView className="bg-background px-4 pt-4 h-full">
@@ -14,7 +16,7 @@ export default function MedicineScreen() {
           <Pressable onPress={() => router.back()}>
             <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
           </Pressable>
-          <Text className="text-2xl text-primary">Read label</Text>
+          <Text className="text-2xl text-primary">{t("read_label")}</Text>
         </View>
       </View>
       <ImageInput />

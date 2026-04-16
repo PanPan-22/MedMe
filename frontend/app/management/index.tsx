@@ -4,6 +4,7 @@ import { useTheme } from "@react-navigation/native";
 import { Link, router, Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, FlatList, Image, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -16,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // }
 
 export default function ManagementScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const db = useSQLiteContext();
   const [meds, setMeds] = useState<Medication[]>([]);
@@ -98,7 +100,9 @@ export default function ManagementScreen() {
                 color={colors.text}
               />
             </Pressable>
-            <Text className="text-2xl text-primary">Your Medication</Text>
+            <Text className="text-2xl text-primary">
+              {t("your_medication")}
+            </Text>
           </View>
           <Link href="/add-schedule" push asChild>
             <Pressable className="flex-row items-center justify-center">
