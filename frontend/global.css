@@ -4,13 +4,14 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  :root,
+  .light {
     --color-primary: #062d13;
     --color-background: #f2fbf5;
   }
 
   .dark {
     --color-primary: #ffffff;
-    --color-background: #062d13;
+    --color-background: #000000;
   }
 }

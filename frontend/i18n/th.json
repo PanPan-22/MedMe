@@ -1,0 +1,20 @@
+{
+  "next_med": "การรักษาต่อไป",
+  "medicine_management": "การจัดการการรักษา",
+  "your_medication": "รายการการรักษา",
+  "record": "บันทึกการรักษา",
+  "settings": "การตั้งค่า",
+  "language_heading": "ภาษา",
+  "appearance_heading": "การแสดงผล",
+  "light_mode": "สว่าง",
+  "dark_mode": "มืด",
+  "add_schedule": "เพิ่มตารางการรักษา",
+  "read_label": "อ่านฉลาก",
+  "fill_field": "กรอกข้อมูล",
+  "medication_name": "ชื่อยา",
+  "amount": "จำนวน",
+  "schedule": "ตารางเวลา",
+  "additional_notes": "หมายเหตุเพิ่มเติม",
+  "save": "บันทึก",
+  "add_time": "เพิ่ม"
+}
