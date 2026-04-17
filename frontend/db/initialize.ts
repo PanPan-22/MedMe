@@ -15,7 +15,17 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
       notification_id TEXT -- Add this!
     );
     `);
-    console.log("Database initialized");
+
+    await db.execAsync(`
+      PRAGMA journal_mode = WAL;
+      CREATE TABLE IF NOT EXISTS patients (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      age INTEGER NOT NULL
+      );
+      `);
+
+    console.log("Database 'schedules' initialized");
     console.log(await db.getAllAsync("PRAGMA table_info(schedules);"));
   } catch (error) {
     console.error("Error initializing database:", error);

@@ -5,7 +5,7 @@ import { Link, router, Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, FlatList, Image, Pressable, Text, View } from "react-native";
+import { Alert, FlatList, Image, Pressable, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // interface Medication {
@@ -21,6 +21,7 @@ export default function ManagementScreen() {
   const { colors } = useTheme();
   const db = useSQLiteContext();
   const [meds, setMeds] = useState<Medication[]>([]);
+  const [text, setText] = useState('');
   const [dbEmpty, setDbEmpty] = useState(true);
 
   useFocusEffect(
@@ -28,6 +29,28 @@ export default function ManagementScreen() {
       fetchMeds();
     }, []),
   );
+
+  const searchMedicine = async (query: string) => {
+    if (!query.trim()) {
+      fetchMeds();
+      return;
+    }
+    // setLoading(true)
+    try {
+      const searchResult = await db.getAllAsync<Medication>(`SELECT * FROM schedules WHERE medicine_name LIKE ?`, [`%${query}%`])
+      setMeds(searchResult);
+    } catch (inconvenience) {
+      console.log("Inconvenience: ", inconvenience)
+    } finally {
+      // setLoading(false)
+    }
+  }
+
+  const handleSearch = (query: string) => {
+    setText(query);
+    //searchPatient(query);
+    searchMedicine(query);
+  }
 
   const clearAllMeds = async () => {
     try {
@@ -55,8 +78,6 @@ export default function ManagementScreen() {
 
   const fetchMeds = async () => {
     try {
-      // getAllAsync returns an array of objects
-      console.log("Fetching medications from database...");
       const allRows = await db.getAllAsync<Medication>(
         "SELECT * FROM schedules",
       );
@@ -115,6 +136,18 @@ export default function ManagementScreen() {
           </Link>
         </View>
       </View>
+      <TextInput
+        value={text}
+        onChangeText={handleSearch}
+        placeholder="Search medicines..."
+        style={{
+          borderWidth: 1,
+          borderColor: '#ccc',
+          padding: 10,
+          marginBottom: 10,
+          borderRadius: 5
+        }}
+      />
       <View className="w-full">
         <FlatList
           data={meds}

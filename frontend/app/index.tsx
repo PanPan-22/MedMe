@@ -1,5 +1,5 @@
+import TimeComponent from "@/components/time-component";
 import { useNotifications } from "@/hooks/use-notifications";
-import Feather from "@expo/vector-icons/Feather";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link, Stack } from "expo-router";
@@ -15,15 +15,15 @@ const dummy = [
 export default function HomeScreen() {
   const { t } = useTranslation();
   const { triggerNotification } = useNotifications();
+  const time = TimeComponent();
   return (
     <View className="bg-background pt-4 px-4 h-full">
       <Stack.Screen options={{ headerShown: true, title: "Home" }} />
       <View className="items-center">
         <View className="flex-row items-center justify-between gap-4 p-2 mb-4 w-full mx-4">
           <Text className="text-3xl text-primary">{t("next_med")}</Text>
-          <View className="flex-row border-2 border-[#FFB916] bg-amber-50 rounded-full items-center justify-center gap-2 px-3 py-1">
-            <Feather name="moon" size={32} color="#FFB916" />
-            <Text className="text-[#FFB916] text-center text-3xl">8:00</Text>
+          <View>
+            <TimeComponent/>
           </View>
         </View>
         <View className="bg-white border border-primary rounded-2xl w-full p-2 mb-4">
@@ -50,6 +50,13 @@ export default function HomeScreen() {
           <Pressable className="flex-row items-center justify-center gap-4 bg-primary rounded-xl p-4 w-full">
             <Ionicons name="clipboard-outline" size={32} color="white" />
             <Text className="text-2xl text-white">{t("record")}</Text>
+          </Pressable>
+        </Link>
+        <View className="h-4" />
+        <Link href="/patient-list" push asChild>
+          <Pressable className="flex-row items-center justify-center gap-4 bg-primary rounded-xl p-4 w-full">
+            <Ionicons name="person-outline" size={32} color="white" />
+            <Text className="text-2xl text-white">{t("Patient")}</Text>
           </Pressable>
         </Link>
         <View className="h-4" />
