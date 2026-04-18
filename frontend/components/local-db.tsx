@@ -12,6 +12,12 @@ export interface Medication {
   type: string;
   whenToTake: string;
   additional: string;
+  stock: number;
+  expiration_date: string;
+  image_uri: string;
+  repeat_days: string;
+  start_date: string;
+  end_date: string;
 }
 
 async function openDatabase(): Promise<SQLiteDatabase> {
@@ -74,7 +80,7 @@ export async function saveToDB(db: any, note: Medication) : Promise<boolean> {
   console.log("Inserting medicine note:", note);
   try {
     await db.runAsync(
-      "INSERT INTO schedules (id, medicine_name, count, type, whenToTake, additional) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO schedules (id, medicine_name, count, type, whenToTake, additional, stock, expiration_date, image_uri, repeat_days, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         note.id,
         note.medicine_name,
@@ -82,6 +88,12 @@ export async function saveToDB(db: any, note: Medication) : Promise<boolean> {
         note.type,
         note.whenToTake,
         note.additional,
+        note.stock,
+        note.expiration_date,
+        note.image_uri,
+        note.repeat_days,
+        note.start_date,
+        note.end_date,
       ],
     );
     console.log("Medicine note inserted successfully");

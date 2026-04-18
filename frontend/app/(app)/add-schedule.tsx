@@ -22,16 +22,11 @@ export default function AddMedicineScreen() {
   return (
     <ScrollView className="bg-background px-4 pt-4 h-full">
       <Stack.Screen options={{ headerShown: true, title: "Add Schedule" }} />
-      <View className="flex-row items-center justify-between p-2 mb-2 w-full">
-        <View className="flex-row items-center gap-4">
-          <Pressable
-            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
-          </Pressable>
-          <Text className="text-2xl text-primary">{t("add_schedule")}</Text>
-        </View>
+      <View className="flex-row items-center gap-4 p-2 mb-4">
+        <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+          <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+        </Pressable>
+        <Text className="text-2xl font-bold text-primary">{t("add_schedule")}</Text>
       </View>
       <View className="flex-column items-center justify-around gap-4 p-2 mb-4 w-full">
         <Link

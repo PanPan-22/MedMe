@@ -15,7 +15,6 @@ const dummy = [
 export default function HomeScreen() {
   const { t } = useTranslation();
   const { triggerNotification } = useNotifications();
-  const time = TimeComponent();
   return (
     <View className="bg-background pt-4 px-4 h-full">
       <Stack.Screen options={{ headerShown: true, title: "Home" }} />
@@ -31,7 +30,7 @@ export default function HomeScreen() {
             data={dummy}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <View className="flex-row items-center justify-between border-b border-gray-300 p-2">
+              <View className="flex-row items-center justify-between border-b border-gray-200 p-2">
                 <Text className="text-lg">{item.name}</Text>
               </View>
             )}
@@ -53,10 +52,10 @@ export default function HomeScreen() {
           </Pressable>
         </Link>
         <View className="h-4" />
-        <Link href="/patient-list" push asChild>
+        <Link href="/patients" push asChild>
           <Pressable className="flex-row items-center justify-center gap-4 bg-primary rounded-xl p-4 w-full">
             <Ionicons name="person-outline" size={32} color="white" />
-            <Text className="text-2xl text-white">{t("Patient")}</Text>
+            <Text className="text-2xl text-white">{t("patients")}</Text>
           </Pressable>
         </Link>
         <View className="h-4" />

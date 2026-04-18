@@ -185,16 +185,11 @@ export default function MedicineScreen() {
   return (
     <ScrollView className="bg-background px-4 pt-4 h-full">
       <Stack.Screen options={{ headerShown: true, title: "Read Label" }} />
-      <View className="flex-row items-center justify-between p-2 mb-2 w-full">
-        <View className="flex-row items-center gap-4">
-          <Pressable
-            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
-          </Pressable>
-          <Text className="text-2xl text-primary">{t("read_label")}</Text>
-        </View>
+      <View className="flex-row items-center gap-4 p-2 mb-4">
+        <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+          <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+        </Pressable>
+        <Text className="text-2xl font-bold text-primary">{t("read_label")}</Text>
       </View>
       <Pressable onPress={handleImagePickerSheet}>
         <View className="border border-gray-300 p-2 w-full items-center rounded-lg h-[25rem]">

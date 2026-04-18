@@ -2,17 +2,23 @@ import * as SQLite from "expo-sqlite";
 
 export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
   try {
-    // await db.execAsync(`DROP TABLE IF EXISTS schedules;`); // DANGEROUS!! USE WHEN YOU WANT TO UPDATE THE SCHEMA AND DON'T CARE ABOUT LOSING DATA!
+    await db.execAsync(`DROP TABLE IF EXISTS schedules;`);
     await db.execAsync(`
       PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS schedules (
-      id INTEGER PRIMARY KEY NOT NULL, 
-      medicine_name TEXT NOT NULL, 
+      id INTEGER PRIMARY KEY NOT NULL,
+      medicine_name TEXT NOT NULL,
       type TEXT,
-      count INTEGER, 
-      whenToTake TEXT, 
+      count INTEGER,
+      whenToTake TEXT,
       additional TEXT,
-      notification_id TEXT -- Add this!
+      notification_id TEXT,
+      stock INTEGER DEFAULT 0,
+      expiration_date TEXT,
+      image_uri TEXT,
+      repeat_days TEXT DEFAULT 'Mon,Tue,Wed,Thu,Fri,Sat,Sun',
+      start_date TEXT,
+      end_date TEXT
     );
     `);
 
@@ -24,6 +30,15 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
       age INTEGER NOT NULL
       );
       `);
+
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS user_profile (
+        clerk_id TEXT PRIMARY KEY NOT NULL,
+        first_name TEXT,
+        last_name TEXT,
+        role TEXT
+      );
+    `);
 
     console.log("Database 'schedules' initialized");
     console.log(await db.getAllAsync("PRAGMA table_info(schedules);"));
