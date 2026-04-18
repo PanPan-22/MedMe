@@ -133,7 +133,7 @@ export default function MedicineScreen() {
     try {
       const text = await scanWithGoogleVision(image);
       if (!text || text === "No text found") {
-        alert("Could not read text.");
+        alert(t("could_not_read_text"));
         setLoading1(false);
         return;
       }
@@ -143,7 +143,7 @@ export default function MedicineScreen() {
 
       // FIX: Check if the AI call actually succeeded
       if (aiResponse === "ERROR_FAILED_ALL_KEYS") {
-        alert("AI is currently unavailable. Please enter details manually.");
+        alert(t("ai_unavailable"));
         return;
       }
 
@@ -161,7 +161,7 @@ export default function MedicineScreen() {
       });
     } catch (error) {
       console.error("Combined scan failed:", error);
-      alert("Something went wrong. Please try again.");
+      alert(t("something_went_wrong"));
     } finally {
       setLoading1(false);
       setLoading2(false);
@@ -184,7 +184,7 @@ export default function MedicineScreen() {
 
   return (
     <ScrollView className="bg-background px-4 pt-4 h-full">
-      <Stack.Screen options={{ headerShown: true, title: "Read Label" }} />
+      <Stack.Screen options={{ headerShown: true, title: t("read_label") }} />
       <View className="flex-row items-center gap-4 p-2 mb-4">
         <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
           <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
@@ -192,11 +192,11 @@ export default function MedicineScreen() {
         <Text className="text-2xl font-bold text-primary">{t("read_label")}</Text>
       </View>
       <Pressable onPress={handleImagePickerSheet}>
-        <View className="border border-gray-300 p-2 w-full items-center rounded-lg h-[25rem]">
+        <View className="border border-muted p-2 w-full items-center rounded-lg h-[25rem]">
           {image === "" ? (
             <View className="flex-1 flex-col items-center justify-center gap-4 w-full">
               <Ionicons name="add-circle-outline" size={64} color={"gray"} />
-              <Text className="text-gray-500 text-2xl">Add Image</Text>
+              <Text className="text-gray-500 text-2xl">{t("add_image")}</Text>
             </View>
           ) : (
             <Image
@@ -211,10 +211,10 @@ export default function MedicineScreen() {
       {image !== "" && (
         <>
           <Pressable
-            className="active:opacity-30 flex-row items-center justify-center gap-4 bg-white border border-primary rounded-xl p-4 w-full"
+            className="active:opacity-30 flex-row items-center justify-center gap-4 bg-card border border-primary rounded-xl p-4 w-full"
             onPress={handleImagePickerSheet}
           >
-            <Text className="text-2xl text-primary">Pick other image</Text>
+            <Text className="text-2xl text-primary">{t("pick_other_image")}</Text>
           </Pressable>
           <View className="h-4"></View>
           <Pressable
@@ -227,10 +227,10 @@ export default function MedicineScreen() {
           >
             <Text className="text-2xl text-white">
               {loading1
-                ? "Scanning..."
+                ? t("scanning")
                 : loading2
-                  ? "Parsing..."
-                  : "Scan image"}
+                  ? t("parsing")
+                  : t("scan_image")}
             </Text>
           </Pressable>
         </>

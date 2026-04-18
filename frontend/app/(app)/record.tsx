@@ -1,3 +1,4 @@
+import { toLocalISODate } from "@/lib/date";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
 import { router, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -36,11 +37,11 @@ const PRESETS = [
 function dateNDaysAgo(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() - n + 1);
-  return d.toISOString().split("T")[0];
+  return toLocalISODate(d);
 }
 
 function todayStr(): string {
-  return new Date().toISOString().split("T")[0];
+  return toLocalISODate(new Date());
 }
 
 function groupOverallStatus(entries: LogRow[]): "all_taken" | "all_skipped" | "partial" {
@@ -106,7 +107,7 @@ export default function RecordScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <Stack.Screen options={{ headerShown: true, title: "Record" }} />
+      <Stack.Screen options={{ headerShown: true, title: t("record") }} />
 
       <View className="px-4 pt-4">
         {/* Header row */}
@@ -125,7 +126,7 @@ export default function RecordScreen() {
             <Pressable
               key={p.days}
               onPress={() => setPreset(p.days)}
-              className={`px-4 py-2 rounded-full border ${preset === p.days ? "bg-primary border-primary" : "bg-white border-gray-300"}`}
+              className={`px-4 py-2 rounded-full border ${preset === p.days ? "bg-primary border-primary" : "bg-card border-muted"}`}
             >
               <Text className={`text-sm font-semibold ${preset === p.days ? "text-white" : "text-gray-500"}`}>
                 {p.label}
@@ -140,7 +141,7 @@ export default function RecordScreen() {
         keyExtractor={(item) => item.scheduled_time}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
         ListEmptyComponent={
-          <Text className="text-center mt-16 text-primary/40 text-base">No records yet</Text>
+          <Text className="text-center mt-16 text-primary/40 text-base">{t("no_records_yet")}</Text>
         }
         renderSectionHeader={({ section }) => (
           <View className="py-2 mt-2">
@@ -150,7 +151,7 @@ export default function RecordScreen() {
         renderItem={({ item }) => {
           const overall = groupOverallStatus(item.entries);
           return (
-            <View className="bg-white border border-primary/10 rounded-2xl mb-3 overflow-hidden">
+            <View className="bg-card border border-primary/10 rounded-2xl mb-3 overflow-hidden">
               {/* Time header */}
               <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100">
                 <Text className="text-primary font-bold text-lg">{item.scheduled_time}</Text>
@@ -169,7 +170,7 @@ export default function RecordScreen() {
                       color={entry.status === "taken" ? "#16a34a" : "#dc2626"}
                     />
                     <Text className={`text-xs font-medium ${entry.status === "taken" ? "text-green-700" : "text-red-600"}`}>
-                      {entry.status === "taken" ? "Taken" : "Skipped"}
+                      {entry.status === "taken" ? t("medication_taken") : t("medication_skipped")}
                     </Text>
                   </View>
                 </View>

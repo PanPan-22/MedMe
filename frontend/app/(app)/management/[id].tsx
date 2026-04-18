@@ -1,13 +1,18 @@
+import { ConfirmModal } from "@/components/confirm-modal";
 import { Medication } from "@/components/local-db";
 import { useToast } from "@/context/toast-context";
+import { deleteScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
 import { cancelNotificationsForMed, scheduleNotificationsForMed } from "@/hooks/use-notifications";
+import { toLocalISODate } from "@/lib/date";
+import { uploadMedImage } from "@/lib/upload";
+import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SheetManager } from "react-native-actions-sheet";
 
@@ -28,7 +33,7 @@ const TYPE_KEYS: Record<string, string> = {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <View className="bg-white rounded-2xl border border-primary/10 mb-4 overflow-hidden">
+    <View className="bg-card rounded-2xl border border-primary/10 mb-4 overflow-hidden">
       {children}
     </View>
   );
@@ -46,6 +51,8 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 export default function MedicineDetailScreen() {
   const { id } = useLocalSearchParams();
   const db = useSQLiteContext();
+  const { user } = useUser();
+  const role = (user?.unsafeMetadata as any)?.role as "patient" | "caretaker" | undefined;
   const { colors } = useTheme();
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -67,6 +74,7 @@ export default function MedicineDetailScreen() {
   const [editingTimeIndex, setEditingTimeIndex] = useState<number | null>(null);
   const [isStartPickerVisible, setStartPickerVisible] = useState(false);
   const [isExpiryPickerVisible, setExpiryPickerVisible] = useState(false);
+  const [isDeleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
 
   const calcEndDate = (start: Date, stockVal: string, amountVal: string, timesCount: number): Date => {
     const s = parseInt(stockVal) || 0;
@@ -110,18 +118,20 @@ export default function MedicineDetailScreen() {
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
-    if (!name.trim()) e.name = "Required";
-    if (!amount.trim() || parseInt(amount) <= 0) e.amount = "Enter a valid amount";
-    if (stock.trim() && parseInt(stock) < 0) e.stock = "Cannot be negative";
-    if (selectedDays.length === 0) e.days = "Select at least one day";
-    if (times.length === 0) e.times = "Add at least one time";
+    if (!name.trim()) e.name = t("error_required");
+    if (!amount.trim() || parseInt(amount) <= 0) e.amount = t("error_invalid_amount");
+    if (!stock.trim() || parseInt(stock) <= 0) e.stock = t("error_invalid_stock");
+    if (selectedDays.length === 0) e.days = t("error_select_day");
+    if (times.length === 0) e.times = t("error_add_time");
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const save = async () => {
     if (!validate()) return;
+    if (!user || !role) { showToast(t("not_signed_in"), "error"); return; }
     try {
+      console.log(`[edit] cancelling old notifs: "${med?.notification_id}"`);
       await cancelNotificationsForMed(med?.notification_id ?? "");
       const notifIds = await scheduleNotificationsForMed({
         medicineName: name.trim(),
@@ -129,37 +139,48 @@ export default function MedicineDetailScreen() {
         repeatDays: selectedDays.join(","),
         stock: parseInt(stock) || 0,
         count: parseInt(amount) || 1,
-        startDate: startDate.toISOString().split("T")[0],
+        startDate: toLocalISODate(startDate),
         patientId: med?.patient_id,
       });
-      await db.runAsync(
-        "UPDATE schedules SET medicine_name=?, type=?, count=?, whenToTake=?, additional=?, stock=?, expiration_date=?, image_uri=?, repeat_days=?, start_date=?, end_date=?, notification_id=? WHERE id=?",
-        [name.trim(), medType, parseInt(amount) || 0, times.join(","), note.trim(),
-          parseInt(stock) || 0, expirationDate ? expirationDate.toISOString().split("T")[0] : "",
-          imageUri ?? "", selectedDays.join(","),
-          startDate.toISOString().split("T")[0], calcEndDate(startDate, stock, amount, times.length).toISOString().split("T")[0],
-          notifIds, id.toString()],
-      );
-      showToast("Medication updated!");
+      console.log(`[edit] scheduled new notifs: "${notifIds}" (count=${notifIds.split(",").filter(Boolean).length})`);
+      let uploadedUri = "";
+      if (imageUri) {
+        if (imageUri.startsWith("http://") || imageUri.startsWith("https://")) {
+          uploadedUri = imageUri;
+        } else {
+          try { uploadedUri = await uploadMedImage(imageUri, user.id); }
+          catch (e) { console.warn("image upload failed, saving without:", e); }
+        }
+      }
+      await updateScheduleAndSync(db, user.id, role, Number(id), {
+        medicine_name: name.trim(),
+        type: medType,
+        count: parseInt(amount) || 0,
+        whenToTake: times.join(","),
+        additional: note.trim(),
+        stock: parseInt(stock) || 0,
+        expiration_date: expirationDate ? toLocalISODate(expirationDate) : "",
+        image_uri: uploadedUri,
+        repeat_days: selectedDays.join(","),
+        start_date: toLocalISODate(startDate),
+        end_date: toLocalISODate(calcEndDate(startDate, stock, amount, times.length)),
+        notification_id: notifIds,
+      });
+      showToast(t("medication_updated"));
       setEditing(false);
       fetchMedication();
-    } catch { showToast("Failed to update", "error"); }
+    } catch { showToast(t("medication_update_failed"), "error"); }
   };
 
-  const deleteMed = () => {
-    Alert.alert(t("delete"), t("delete_confirm_med") ?? "Delete this medication?", [
-      { text: t("cancel"), style: "cancel" },
-      {
-        text: t("delete"),
-        style: "destructive",
-        onPress: async () => {
-          await cancelNotificationsForMed(med?.notification_id ?? "");
-          await db.runAsync("DELETE FROM schedules WHERE id = ?", [id.toString()]);
-          showToast("Medication deleted");
-          router.back();
-        },
-      },
-    ]);
+  const deleteMed = () => setDeleteConfirmVisible(true);
+
+  const confirmDeleteMed = async () => {
+    if (!user || !role) return;
+    setDeleteConfirmVisible(false);
+    await cancelNotificationsForMed(med?.notification_id ?? "");
+    await deleteScheduleAndSync(db, user.id, role, Number(id));
+    showToast(t("medication_deleted"));
+    router.back();
   };
 
   const handleTimeConfirm = (date: Date) => {
@@ -196,7 +217,7 @@ export default function MedicineDetailScreen() {
 
   return (
     <ScrollView className="bg-background flex-1">
-      <Stack.Screen options={{ headerShown: true, title: "Detail" }} />
+      <Stack.Screen options={{ headerShown: true, title: t("detail") }} />
 
       <View className="px-4 pt-4 pb-12">
         {/* Header */}
@@ -232,13 +253,13 @@ export default function MedicineDetailScreen() {
             <Text className="text-base font-semibold text-primary px-2">{t("medicine_image")}</Text>
             <Pressable
               onPress={handleImagePicker}
-              className="border-2 border-dashed border-primary rounded-2xl overflow-hidden bg-white items-center justify-center"
+              className="border-2 border-dashed border-primary rounded-2xl overflow-hidden bg-card items-center justify-center"
               style={{ aspectRatio: 4 / 3 }}
             >
               {imageUri ? (
                 <Image
                   source={{ uri: imageUri }}
-                  style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+                  style={{ width: "100%", height: "100%" }}
                   resizeMode="contain"
                 />
               ) : (
@@ -255,10 +276,10 @@ export default function MedicineDetailScreen() {
             )}
           </View>
         ) : imageUri ? (
-          <View className="rounded-2xl overflow-hidden bg-white mb-4 border border-primary/10" style={{ aspectRatio: 4 / 3 }}>
+          <View className="rounded-2xl overflow-hidden bg-card mb-4 border border-primary/10 items-center justify-center" style={{ aspectRatio: 4 / 3 }}>
             <Image
               source={{ uri: imageUri }}
-              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+              style={{ width: "100%", height: "100%" }}
               resizeMode="contain"
             />
           </View>
@@ -272,9 +293,9 @@ export default function MedicineDetailScreen() {
               <TextInput
                 value={name}
                 onChangeText={(v) => { setName(v); setErrors((e) => ({ ...e, name: "" })); }}
-                placeholder="eg. Aspirin"
+                placeholder={t("placeholder_medicine")}
                 placeholderTextColor="#888888"
-                className={`text-primary bg-white border rounded-2xl px-4 py-3 text-base ${errors.name ? "border-red-500" : "border-primary"}`}
+                className={`text-primary bg-card border rounded-2xl px-4 py-3 text-base ${errors.name ? "border-red-500" : "border-primary"}`}
               />
               {errors.name ? <Text className="text-red-500 text-xs">{errors.name}</Text> : null}
             </View>
@@ -287,7 +308,7 @@ export default function MedicineDetailScreen() {
                   <Pressable
                     key={mType}
                     onPress={() => setMedType(mType)}
-                    className={`px-4 py-2 rounded-full border ${medType === mType ? "bg-primary border-primary" : "bg-white border-gray-300"}`}
+                    className={`px-4 py-2 rounded-full border ${medType === mType ? "bg-primary border-primary" : "bg-card border-muted"}`}
                   >
                     <Text className={medType === mType ? "text-white font-semibold" : "text-gray-500"}>
                       {t(TYPE_KEYS[mType])}
@@ -305,9 +326,9 @@ export default function MedicineDetailScreen() {
                   value={amount}
                   onChangeText={(v) => { setAmount(v); setErrors((e) => ({ ...e, amount: "" })); }}
                   keyboardType="numeric"
-                  placeholder="eg. 1"
+                  placeholder={t("placeholder_amount")}
                   placeholderTextColor="#888888"
-                  className={`text-primary bg-white border rounded-2xl px-4 py-3 text-base ${errors.amount ? "border-red-500" : "border-primary"}`}
+                  className={`text-primary bg-card border rounded-2xl px-4 py-3 text-base ${errors.amount ? "border-red-500" : "border-primary"}`}
                 />
                 {errors.amount ? <Text className="text-red-500 text-xs">{errors.amount}</Text> : null}
               </View>
@@ -317,9 +338,9 @@ export default function MedicineDetailScreen() {
                   value={stock}
                   onChangeText={(v) => { setStock(v); setErrors((e) => ({ ...e, stock: "" })); }}
                   keyboardType="numeric"
-                  placeholder="eg. 30"
+                  placeholder={t("placeholder_stock")}
                   placeholderTextColor="#888888"
-                  className={`text-primary bg-white border rounded-2xl px-4 py-3 text-base ${errors.stock ? "border-red-500" : "border-primary"}`}
+                  className={`text-primary bg-card border rounded-2xl px-4 py-3 text-base ${errors.stock ? "border-red-500" : "border-primary"}`}
                 />
                 {errors.stock ? <Text className="text-red-500 text-xs">{errors.stock}</Text> : null}
               </View>
@@ -338,7 +359,7 @@ export default function MedicineDetailScreen() {
                   </Pressable>
                 ))}
                 <Pressable
-                  className="flex-row items-center bg-white border border-dashed border-primary rounded-full px-3 py-1.5"
+                  className="flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
                   onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
                 >
                   <Ionicons name="add" size={16} color={colors.primary} />
@@ -362,7 +383,7 @@ export default function MedicineDetailScreen() {
                         setSelectedDays(next);
                         if (next.length > 0) setErrors((e) => ({ ...e, days: "" }));
                       }}
-                      className={`w-10 h-10 rounded-full items-center justify-center ${isSelected ? "bg-primary border-2 border-primary" : "bg-white border border-gray-300"}`}
+                      className={`w-10 h-10 rounded-full items-center justify-center ${isSelected ? "bg-primary border-2 border-primary" : "bg-card border border-muted"}`}
                     >
                       <Text className={`text-xs font-bold ${isSelected ? "text-white" : "text-gray-400"}`}>
                         {t(DAY_KEYS[day])}
@@ -378,7 +399,7 @@ export default function MedicineDetailScreen() {
             <View className="flex-row gap-3 px-2 mb-4">
               <View className="flex-1 gap-1">
                 <Text className="text-sm font-semibold text-primary">{t("start_date")}</Text>
-                <Pressable onPress={() => setStartPickerVisible(true)} className="bg-white border border-primary rounded-xl py-3 px-3">
+                <Pressable onPress={() => setStartPickerVisible(true)} className="bg-card border border-primary rounded-xl py-3 px-3">
                   <Text className="text-primary text-xs text-center">{formatDate(startDate)}</Text>
                 </Pressable>
               </View>
@@ -390,7 +411,7 @@ export default function MedicineDetailScreen() {
               </View>
               <View className="flex-1 gap-1">
                 <Text className="text-sm font-semibold text-primary">{t("expiry_date")}</Text>
-                <Pressable onPress={() => setExpiryPickerVisible(true)} className="bg-white border border-primary rounded-xl py-3 px-3">
+                <Pressable onPress={() => setExpiryPickerVisible(true)} className="bg-card border border-primary rounded-xl py-3 px-3">
                   <Text className="text-primary text-xs text-center">{expirationDate ? formatDate(expirationDate) : "—"}</Text>
                 </Pressable>
               </View>
@@ -403,10 +424,10 @@ export default function MedicineDetailScreen() {
                 value={note}
                 onChangeText={setNote}
                 multiline
-                placeholder="eg. take with food"
+                placeholder={t("placeholder_notes")}
                 placeholderTextColor="#888888"
                 textAlignVertical="top"
-                className="text-primary text-base h-28 bg-white border border-primary rounded-2xl p-4"
+                className="text-primary text-base h-28 bg-card border border-primary rounded-2xl p-4"
               />
             </View>
           </>
@@ -492,6 +513,16 @@ export default function MedicineDetailScreen() {
       <DateTimePickerModal isVisible={isTimePickerVisible} mode="time" date={pickerDate} onConfirm={handleTimeConfirm} onCancel={() => { setEditingTimeIndex(null); setTimePickerVisible(false); }} />
       <DateTimePickerModal isVisible={isStartPickerVisible} mode="date" onConfirm={(d) => { setStartDate(d); setStartPickerVisible(false); }} onCancel={() => setStartPickerVisible(false)} />
       <DateTimePickerModal isVisible={isExpiryPickerVisible} mode="date" onConfirm={(d) => { setExpirationDate(d); setExpiryPickerVisible(false); }} onCancel={() => setExpiryPickerVisible(false)} />
+      <ConfirmModal
+        visible={isDeleteConfirmVisible}
+        title={t("delete")}
+        message={t("delete_confirm_med") ?? "Delete this medication?"}
+        cancelText={t("cancel")}
+        confirmText={t("delete")}
+        destructive
+        onCancel={() => setDeleteConfirmVisible(false)}
+        onConfirm={confirmDeleteMed}
+      />
     </ScrollView>
   );
 }

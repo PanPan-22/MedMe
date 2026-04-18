@@ -2,13 +2,17 @@ import { useAuth, useUser } from "@clerk/expo";
 import Feather from "@expo/vector-icons/Feather";
 import * as Notifications from "expo-notifications";
 import { useNotifications } from "@/hooks/use-notifications";
-import { Link, Redirect, router, Stack } from "expo-router";
+import { useSyncEngine } from "@/hooks/use-sync-engine";
+import { useSyncPresence } from "@/hooks/use-sync-presence";
+import { Link, Redirect, router, Stack, usePathname } from "expo-router";
 import { useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function AppHeader({ displayName }: { displayName: string }) {
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const isSettings = pathname === "/settings";
   return (
     <View
       className="w-full flex-row items-center justify-between px-4 pb-4 bg-primary"
@@ -21,11 +25,13 @@ function AppHeader({ displayName }: { displayName: string }) {
       >
         {displayName}
       </Text>
-      <Link href="/settings" push asChild>
-        <Pressable hitSlop={16}>
-          <Feather name="settings" size={24} color="white" />
-        </Pressable>
-      </Link>
+      {!isSettings && (
+        <Link href="/settings" push asChild>
+          <Pressable hitSlop={16}>
+            <Feather name="settings" size={24} color="white" />
+          </Pressable>
+        </Link>
+      )}
     </View>
   );
 }
@@ -34,6 +40,8 @@ export default function AppLayout() {
   const { isSignedIn, isLoaded } = useAuth();
   const { user } = useUser();
   useNotifications();
+  useSyncPresence();
+  useSyncEngine();
 
   useEffect(() => {
     // Handle notification tap (app already open or resuming from background)

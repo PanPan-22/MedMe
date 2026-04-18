@@ -1,5 +1,4 @@
-import { clearDatabase, Medication } from "@/components/local-db";
-import { cancelNotificationsForMed } from "@/hooks/use-notifications";
+import { Medication } from "@/components/local-db";
 import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
@@ -8,7 +7,6 @@ import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Alert,
   FlatList,
   Image,
   Pressable,
@@ -16,13 +14,11 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ManagementScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const db = useSQLiteContext();
-  const insets = useSafeAreaInsets();
   const { patientId, patientName } = useLocalSearchParams<{ patientId?: string; patientName?: string }>();
 
   const pid = patientId ? parseInt(patientId) : null;
@@ -30,11 +26,12 @@ export default function ManagementScreen() {
 
   const [meds, setMeds] = useState<Medication[]>([]);
   const [text, setText] = useState("");
-  const [dbEmpty, setDbEmpty] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
       fetchMeds();
+      const id = setInterval(fetchMeds, 3000);
+      return () => clearInterval(id);
     }, [pid]),
   );
 
@@ -46,7 +43,6 @@ export default function ManagementScreen() {
       const args = pid !== null ? [pid] : [];
       const allRows = await db.getAllAsync<Medication>(query, args);
       setMeds(allRows);
-      setDbEmpty(allRows.length === 0);
     } catch (error) {
       console.error("Error fetching medications:", error);
     }
@@ -71,41 +67,13 @@ export default function ManagementScreen() {
     searchMedicine(query);
   };
 
-  const alertClearDatabase = () => {
-    Alert.alert(
-      t("clear_database"),
-      t("clear_confirm"),
-      [
-        { text: t("cancel"), style: "cancel" },
-        {
-          text: t("clear"),
-          style: "destructive",
-          onPress: async () => {
-            const query = pid !== null
-              ? "SELECT notification_id FROM schedules WHERE patient_id = ?"
-              : "SELECT notification_id FROM schedules WHERE patient_id IS NULL";
-            const rows = await db.getAllAsync<{ notification_id: string }>(query, pid !== null ? [pid] : []);
-            for (const row of rows) {
-              if (row.notification_id) await cancelNotificationsForMed(row.notification_id);
-            }
-            const deleteQuery = pid !== null
-              ? "DELETE FROM schedules WHERE patient_id = ?"
-              : "DELETE FROM schedules WHERE patient_id IS NULL";
-            await db.runAsync(deleteQuery, pid !== null ? [pid] : []);
-            await fetchMeds();
-          },
-        },
-      ],
-    );
-  };
-
   const addScheduleHref = pid !== null
     ? { pathname: "/add-schedule" as const, params: { patientId: pid, patientName: patientName ?? "" } }
     : { pathname: "/add-schedule" as const };
 
   return (
     <View className="bg-background pt-4 px-4 h-full">
-      <Stack.Screen options={{ headerShown: true, title: "Management" }} />
+      <Stack.Screen options={{ headerShown: true, title: t("management_title") }} />
 
       <View className="flex-row items-center justify-between p-2 mb-4 w-full">
         <View className="flex-row items-center gap-4 flex-1 mr-2">
@@ -119,7 +87,7 @@ export default function ManagementScreen() {
         </Pressable>
       </View>
 
-      <View className="flex-row items-center gap-2 px-3 w-full bg-white border border-gray-300 rounded-full mb-4">
+      <View className="flex-row items-center gap-2 px-3 w-full bg-card border border-muted rounded-full mb-4">
         <Feather name="search" size={24} color="black" />
         <TextInput
           value={text}
@@ -139,7 +107,7 @@ export default function ManagementScreen() {
           }
           renderItem={({ item }) => (
             <Pressable
-              className="p-2 border-b w-full border-gray-200 flex-row items-center justify-between active:opacity-70"
+              className="p-2 border-b w-full border-muted flex-row items-center justify-between active:opacity-70"
               onPress={() => router.push({
                 pathname: `/management/${item.id}`,
                 params: pid !== null ? { patientId: pid, patientName: patientName ?? "" } : {},
@@ -148,25 +116,22 @@ export default function ManagementScreen() {
               <Text className="text-xl text-primary truncate w-4/5" numberOfLines={1}>
                 {item.medicine_name}
               </Text>
-              <Image
-                style={{ width: 50, height: 50, borderRadius: 5 }}
-                source={require("@/assets/images/tempura.jpg")}
-              />
+              {item.image_uri ? (
+                <Image
+                  style={{ width: 50, height: 50, borderRadius: 8 }}
+                  source={{ uri: item.image_uri }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={{ width: 50, height: 50, borderRadius: 8 }} className="bg-primary/10 items-center justify-center">
+                  <Ionicons name="medical-outline" size={24} color={colors.primary} />
+                </View>
+              )}
             </Pressable>
           )}
         />
       </View>
 
-      {!dbEmpty && (
-        <View className="items-center mt-4 mb-4" style={{ paddingBottom: insets.bottom }}>
-          <Pressable
-            className="active:opacity-70 items-center justify-center bg-primary rounded-2xl p-4 w-60 shadow-sm"
-            onPress={alertClearDatabase}
-          >
-            <Text className="text-2xl font-bold text-background">{t("clear")}</Text>
-          </Pressable>
-        </View>
-      )}
     </View>
   );
 }

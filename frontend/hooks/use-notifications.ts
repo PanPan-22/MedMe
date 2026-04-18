@@ -102,9 +102,11 @@ export async function cancelNotificationsForMed(notificationIds: string): Promis
 export function useNotifications() {
   useEffect(() => {
     (async () => {
-      const { status } = await Notifications.requestPermissionsAsync({
-        android: { alarm: true },
-      });
+      const { status } = await Notifications.requestPermissionsAsync(
+        Platform.OS === "ios"
+          ? { ios: { allowAlert: true, allowBadge: true, allowSound: true } }
+          : { android: { alarm: true } },
+      );
       if (Platform.OS === "android") {
         await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
           name: "Medication Reminders",

@@ -1,6 +1,9 @@
-import { Medication, saveToDB as addMedicine } from "@/components/local-db";
 import { useToast } from "@/context/toast-context";
+import { insertScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
 import { scheduleNotificationsForMed } from "@/hooks/use-notifications";
+import { toLocalISODate } from "@/lib/date";
+import { uploadMedImage } from "@/lib/upload";
+import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
 import { useTheme } from "@react-navigation/native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
@@ -30,6 +33,8 @@ export default function ManualAddScreen() {
   const { colors } = useTheme();
   const { showToast } = useToast();
   const db = useSQLiteContext();
+  const { user } = useUser();
+  const role = (user?.unsafeMetadata as any)?.role as "patient" | "caretaker" | undefined;
   const { patientId } = useLocalSearchParams<{ patientId?: string }>();
   const pid = patientId ? parseInt(patientId) : null;
 
@@ -60,11 +65,11 @@ export default function ManualAddScreen() {
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
-    if (!name.trim()) e.name = "Required";
-    if (!amount.trim() || parseInt(amount) <= 0) e.amount = "Enter a valid amount";
-    if (stock.trim() && parseInt(stock) < 0) e.stock = "Cannot be negative";
-    if (selectedDays.length === 0) e.days = "Select at least one day";
-    if (times.length === 0) e.times = "Add at least one time";
+    if (!name.trim()) e.name = t("error_required");
+    if (!amount.trim() || parseInt(amount) <= 0) e.amount = t("error_invalid_amount");
+    if (!stock.trim() || parseInt(stock) <= 0) e.stock = t("error_invalid_stock");
+    if (selectedDays.length === 0) e.days = t("error_select_day");
+    if (times.length === 0) e.times = t("error_add_time");
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -99,7 +104,7 @@ export default function ManualAddScreen() {
 
   return (
     <ScrollView className="bg-background px-4 pt-4 h-full">
-      <Stack.Screen options={{ headerShown: true, title: "Manual Add" }} />
+      <Stack.Screen options={{ headerShown: true, title: t("manual_add") }} />
 
       <View className="flex-row items-center gap-4 p-2 mb-4">
         <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
@@ -113,7 +118,7 @@ export default function ManualAddScreen() {
         <Text className="text-base font-semibold text-primary">{t("medicine_image")}</Text>
         <Pressable
           onPress={handleImagePicker}
-          className="border-2 border-dashed border-primary rounded-2xl overflow-hidden bg-white items-center justify-center"
+          className="border-2 border-dashed border-primary rounded-2xl overflow-hidden bg-card items-center justify-center"
           style={{ aspectRatio: 4 / 3 }}
         >
           {imageUri ? (
@@ -142,9 +147,9 @@ export default function ManualAddScreen() {
         <TextInput
           value={name}
           onChangeText={(v) => { setName(v); setErrors((e) => ({ ...e, name: "" })); }}
-          placeholder="eg. Aspirin"
+          placeholder={t("placeholder_medicine")}
           placeholderTextColor="#888888"
-          className={`text-primary bg-white border rounded-2xl px-4 text-base h-12 ${errors.name ? "border-red-500" : "border-primary"}`}
+          className={`text-primary bg-card border rounded-2xl px-4 text-base h-12 ${errors.name ? "border-red-500" : "border-primary"}`}
         />
         {errors.name ? <Text className="text-red-500 text-xs">{errors.name}</Text> : null}
       </View>
@@ -157,7 +162,7 @@ export default function ManualAddScreen() {
             <Pressable
               key={mType}
               onPress={() => setMedType(mType)}
-              className={`px-4 py-2 rounded-full border ${medType === mType ? "bg-primary border-primary" : "bg-white border-gray-300"}`}
+              className={`px-4 py-2 rounded-full border ${medType === mType ? "bg-primary border-primary" : "bg-card border-muted"}`}
             >
               <Text className={medType === mType ? "text-white font-semibold" : "text-gray-500"}>{t(TYPE_KEYS[mType])}</Text>
             </Pressable>
@@ -173,9 +178,9 @@ export default function ManualAddScreen() {
             value={amount}
             onChangeText={(v) => { setAmount(v); setErrors((e) => ({ ...e, amount: "" })); }}
             keyboardType="numeric"
-            placeholder="eg. 1"
+            placeholder={t("placeholder_amount")}
             placeholderTextColor="#888888"
-            className={`text-primary bg-white border rounded-2xl px-4 text-base h-12 ${errors.amount ? "border-red-500" : "border-primary"}`}
+            className={`text-primary bg-card border rounded-2xl px-4 text-base h-12 ${errors.amount ? "border-red-500" : "border-primary"}`}
           />
           {errors.amount ? <Text className="text-red-500 text-xs">{errors.amount}</Text> : null}
         </View>
@@ -185,9 +190,9 @@ export default function ManualAddScreen() {
             value={stock}
             onChangeText={(v) => { setStock(v); setErrors((e) => ({ ...e, stock: "" })); }}
             keyboardType="numeric"
-            placeholder="eg. 30"
+            placeholder={t("placeholder_stock")}
             placeholderTextColor="#888888"
-            className={`text-primary bg-white border rounded-2xl px-4 text-base h-12 ${errors.stock ? "border-red-500" : "border-primary"}`}
+            className={`text-primary bg-card border rounded-2xl px-4 text-base h-12 ${errors.stock ? "border-red-500" : "border-primary"}`}
           />
           {errors.stock ? <Text className="text-red-500 text-xs">{errors.stock}</Text> : null}
         </View>
@@ -208,7 +213,7 @@ export default function ManualAddScreen() {
                   if (next.length > 0) setErrors((e) => ({ ...e, days: "" }));
                 }}
                 className={`w-10 h-10 rounded-full items-center justify-center ${
-                  isSelected ? "bg-primary border-2 border-primary" : "bg-white border border-gray-300"
+                  isSelected ? "bg-primary border-2 border-primary" : "bg-card border border-muted"
                 }`}
               >
                 <Text className={`text-xs font-bold ${isSelected ? "text-white" : "text-gray-400"}`}>
@@ -234,7 +239,7 @@ export default function ManualAddScreen() {
             </Pressable>
           ))}
           <Pressable
-            className="flex-row items-center bg-white border border-dashed border-primary rounded-full px-3 py-1.5"
+            className="flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
             onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
           >
             <Ionicons name="add" size={16} color={colors.primary} />
@@ -248,7 +253,7 @@ export default function ManualAddScreen() {
       <View className="flex-row gap-3 px-2 mb-4">
         <View className="flex-1 gap-1">
           <Text className="text-sm font-semibold text-primary">{t("start_date")}</Text>
-          <Pressable onPress={() => setStartDatePickerVisible(true)} className="bg-white border border-primary rounded-xl h-10 justify-center">
+          <Pressable onPress={() => setStartDatePickerVisible(true)} className="bg-card border border-primary rounded-xl h-10 justify-center">
             <Text className="text-primary text-xs text-center">{formatDate(startDate)}</Text>
           </Pressable>
         </View>
@@ -260,7 +265,7 @@ export default function ManualAddScreen() {
         </View>
         <View className="flex-1 gap-1">
           <Text className="text-sm font-semibold text-primary">{t("expiry_date")}</Text>
-          <Pressable onPress={() => setExpiryPickerVisible(true)} className="bg-white border border-primary rounded-xl h-10 justify-center">
+          <Pressable onPress={() => setExpiryPickerVisible(true)} className="bg-card border border-primary rounded-xl h-10 justify-center">
             <Text className="text-primary text-xs text-center">
               {expirationDate ? formatDate(expirationDate) : "—"}
             </Text>
@@ -275,10 +280,10 @@ export default function ManualAddScreen() {
           value={note}
           onChangeText={setNote}
           multiline
-          placeholder="eg. take with food"
+          placeholder={t("placeholder_notes")}
           placeholderTextColor="#888888"
           textAlignVertical="top"
-          className="text-primary text-base h-28 bg-white border border-primary rounded-2xl p-4"
+          className="text-primary text-base h-28 bg-card border border-primary rounded-2xl p-4"
         />
       </View>
 
@@ -288,23 +293,30 @@ export default function ManualAddScreen() {
           className="active:opacity-70 items-center justify-center bg-primary rounded-2xl p-4 w-full shadow-sm"
           onPress={async () => {
             if (!validate()) return;
-            const medData: Medication = {
-              id: 0,
-              medicine_name: name.trim(),
-              type: medType,
-              count: parseInt(amount) || 0,
-              whenToTake: times.join(","),
-              additional: note.trim(),
-              stock: parseInt(stock) || 0,
-              expiration_date: expirationDate ? expirationDate.toISOString().split("T")[0] : "",
-              image_uri: imageUri ?? "",
-              repeat_days: selectedDays.join(","),
-              start_date: startDate.toISOString().split("T")[0],
-              end_date: calcEndDate(startDate, stock, amount, times.length).toISOString().split("T")[0],
-              patient_id: pid,
-            };
-            const success = await addMedicine(db, medData);
-            if (success) {
+            if (!user || !role) {
+              showToast(t("not_signed_in"), "error");
+              return;
+            }
+            try {
+              let uploadedUri = "";
+              if (imageUri) {
+                try { uploadedUri = await uploadMedImage(imageUri, user.id); }
+                catch (e) { console.warn("image upload failed, saving without:", e); }
+              }
+              const { id } = await insertScheduleAndSync(db, user.id, role, {
+                medicine_name: name.trim(),
+                type: medType,
+                count: parseInt(amount) || 0,
+                whenToTake: times.join(","),
+                additional: note.trim(),
+                stock: parseInt(stock) || 0,
+                expiration_date: expirationDate ? toLocalISODate(expirationDate) : "",
+                image_uri: uploadedUri,
+                repeat_days: selectedDays.join(","),
+                start_date: toLocalISODate(startDate),
+                end_date: toLocalISODate(calcEndDate(startDate, stock, amount, times.length)),
+                patient_id: pid,
+              });
               try {
                 const notifIds = await scheduleNotificationsForMed({
                   medicineName: name.trim(),
@@ -312,17 +324,17 @@ export default function ManualAddScreen() {
                   repeatDays: selectedDays.join(","),
                   stock: parseInt(stock) || 0,
                   count: parseInt(amount) || 1,
-                  startDate: startDate.toISOString().split("T")[0],
+                  startDate: toLocalISODate(startDate),
                   patientId: pid,
                 });
-                await db.runAsync("UPDATE schedules SET notification_id = ? WHERE id = ?", [notifIds, medData.id]);
+                await updateScheduleAndSync(db, user.id, role, id, { notification_id: notifIds });
               } catch (e) {
                 console.error("Failed to schedule notifications:", e);
               }
-              showToast("Medication added successfully!");
+              showToast(t("medication_added_success"));
               router.back();
-            } else {
-              showToast("Failed to save medication", "error");
+            } catch {
+              showToast(t("medication_save_failed"), "error");
             }
           }}
         >

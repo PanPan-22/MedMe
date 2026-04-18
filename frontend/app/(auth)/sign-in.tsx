@@ -69,18 +69,18 @@ export default function SignInScreen() {
           <TextInput
             value={username}
             onChangeText={(v) => { setUsername(v); setShowErrors(false); }}
-            placeholder="eg. john_doe"
+            placeholder={t("placeholder_username")}
             placeholderTextColor="#888888"
             autoCapitalize="none"
             autoCorrect={false}
-            className={`text-primary bg-white border rounded-2xl px-4 py-3 text-base ${usernameError ? "border-red-500" : "border-primary"}`}
+            className={`text-primary bg-card border rounded-2xl px-4 py-3 text-base ${usernameError ? "border-red-500" : "border-primary"}`}
           />
           {usernameError && <Text className="text-red-500 text-xs">{usernameError.longMessage ?? usernameError.message}</Text>}
         </View>
 
         <View className="gap-2">
           <Text className="text-base font-semibold text-primary">{t("password")}</Text>
-          <View className={`flex-row items-center bg-white border rounded-2xl px-4 ${passwordError ? "border-red-500" : "border-primary"}`}>
+          <View className={`flex-row items-center bg-card border rounded-2xl px-4 ${passwordError ? "border-red-500" : "border-primary"}`}>
             <TextInput
               value={password}
               onChangeText={(v) => { setPassword(v); setShowErrors(false); }}

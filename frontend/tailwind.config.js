@@ -10,9 +10,10 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // The variable name MUST match the one in global.css
         primary: "var(--color-primary)",
         background: "var(--color-background)",
+        card: "var(--color-card)",
+        muted: "var(--color-muted)",
       },
     },
   },

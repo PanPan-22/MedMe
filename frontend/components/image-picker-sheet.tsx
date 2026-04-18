@@ -1,21 +1,26 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useTranslation } from "react-i18next";
 import { Text, TouchableOpacity, View } from "react-native";
 import ActionSheet, {
   registerSheet,
   SheetDefinition,
   SheetManager,
+  SheetProps,
 } from "react-native-actions-sheet";
 
 declare module "react-native-actions-sheet" {
   interface Sheets {
     "image-picker-sheet": SheetDefinition<{
-      payload: string;
+      payload: { aspect?: [number, number] } | undefined;
     }>;
   }
 }
 
-const ImageSheet = () => {
+const ImageSheet = (props: SheetProps<"image-picker-sheet">) => {
+  const aspect = props.payload?.aspect ?? [4, 3];
+  const { t } = useTranslation();
+
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
@@ -25,12 +30,12 @@ const ImageSheet = () => {
 
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ["images"],
-      quality: 1,
-      aspect: [4, 3],
+      allowsEditing: true,
+      aspect,
+      quality: 0.9,
     });
 
     if (!result.canceled) {
-      // HIDE THE SHEET AND SEND THE DATA BACK HERE
       SheetManager.hide("image-picker-sheet", {
         payload: { uri: result.assets[0].uri },
       });
@@ -38,13 +43,14 @@ const ImageSheet = () => {
   };
 
   const handleImagePickerPress = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 1,
+      allowsEditing: true,
+      aspect,
+      quality: 0.9,
     });
 
     if (!result.canceled) {
-      // HIDE THE SHEET AND SEND THE DATA BACK HERE
       SheetManager.hide("image-picker-sheet", {
         payload: { uri: result.assets[0].uri },
       });
@@ -56,40 +62,32 @@ const ImageSheet = () => {
       id="image-picker-sheet"
       containerStyle={{ borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
     >
-      <View className="p-6 h-64 bg-white">
+      <View className="p-6 h-64 bg-card">
         <Text className="text-xl font-bold text-slate-800 text-center mb-6">
-          Add Medication Photo
+          {t("add_photo")}
         </Text>
 
-        {/* Camera Option */}
         <TouchableOpacity
           className="flex-row items-center p-4 bg-blue-50 rounded-2xl mb-4 active:bg-blue-100"
-          onPress={() => {
-            takePhoto();
-            SheetManager.hide("photo_picker_sheet");
-          }}
+          onPress={takePhoto}
         >
           <View className="bg-blue-500 p-3 rounded-full">
             <Ionicons name="camera" size={24} color="white" />
           </View>
           <Text className="text-lg font-semibold text-blue-900 ml-4">
-            Take a New Photo
+            {t("take_new_photo")}
           </Text>
         </TouchableOpacity>
 
-        {/* Gallery Option */}
         <TouchableOpacity
           className="flex-row items-center p-4 bg-emerald-50 rounded-2xl active:bg-emerald-100"
-          onPress={() => {
-            handleImagePickerPress();
-            SheetManager.hide("photo_picker_sheet");
-          }}
+          onPress={handleImagePickerPress}
         >
           <View className="bg-emerald-500 p-3 rounded-full">
             <Ionicons name="images" size={24} color="white" />
           </View>
           <Text className="text-lg font-semibold text-emerald-900 ml-4">
-            Choose from Gallery
+            {t("choose_gallery")}
           </Text>
         </TouchableOpacity>
       </View>

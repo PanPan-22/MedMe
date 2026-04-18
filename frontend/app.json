@@ -69,6 +69,12 @@
         }
       ],
       "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "MedMe needs access to your photos to set a profile picture."
+        }
+      ],
       "@clerk/expo"
     ],
     "experiments": {

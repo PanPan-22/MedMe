@@ -1,5 +1,8 @@
 import { Medication } from "@/components/local-db";
+import { insertLogAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
 import { cancelNotificationsForMed, scheduleNotificationsForMed } from "@/hooks/use-notifications";
+import { toLocalISODate } from "@/lib/date";
+import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
@@ -17,6 +20,8 @@ export default function NotificationModal() {
   const { time, patientId } = useLocalSearchParams<{ time: string; patientId?: string }>();
   const { t } = useTranslation();
   const db = useSQLiteContext();
+  const { user } = useUser();
+  const role = (user?.unsafeMetadata as any)?.role as "patient" | "caretaker" | undefined;
   const insets = useSafeAreaInsets();
 
   const pid = patientId ? parseInt(patientId) : null;
@@ -46,18 +51,20 @@ export default function NotificationModal() {
     setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const confirm = async () => {
-    const today = new Date().toISOString().split("T")[0];
+    if (!user || !role) { router.back(); return; }
+    const today = toLocalISODate(new Date());
     const timestamp = new Date().toISOString();
     for (const med of meds) {
-      const status = checked[med.id] ? "taken" : "skipped";
-      await db.runAsync(
-        "INSERT INTO medication_logs (medication_id, scheduled_time, log_date, timestamp, status, patient_id) VALUES (?, ?, ?, ?, ?, ?)",
-        [med.id, time, today, timestamp, status, pid ?? null],
-      );
+      const status: "taken" | "skipped" = checked[med.id] ? "taken" : "skipped";
+      await insertLogAndSync(db, user.id, role, {
+        medication_id: med.id,
+        scheduled_time: time,
+        log_date: today,
+        timestamp,
+        status,
+        patient_id: pid ?? null,
+      });
 
-      // For taken: reduce stock. For skipped: stock unchanged.
-      // Either way, the fired notification is consumed by the OS (one-time DATE trigger),
-      // so we always reschedule to maintain the correct future notification count.
       const newStock = checked[med.id]
         ? Math.max(0, (med.stock ?? 0) - (med.count ?? 1))
         : (med.stock ?? 0);
@@ -78,10 +85,11 @@ export default function NotificationModal() {
         patientId: med.patient_id,
       });
 
-      await db.runAsync(
-        "UPDATE schedules SET stock = ?, end_date = ?, notification_id = ? WHERE id = ?",
-        [newStock, newEndDate.toISOString().split("T")[0], newIds, med.id],
-      );
+      await updateScheduleAndSync(db, user.id, role, med.id, {
+        stock: newStock,
+        end_date: toLocalISODate(newEndDate),
+        notification_id: newIds,
+      });
     }
     router.back();
   };
@@ -103,7 +111,7 @@ export default function NotificationModal() {
             <Pressable
               key={med.id}
               onPress={() => toggle(med.id)}
-              className="active:opacity-70 flex-row items-center gap-4 bg-white border border-primary/10 rounded-2xl px-4 py-4"
+              className="active:opacity-70 flex-row items-center gap-4 bg-card border border-primary/10 rounded-2xl px-4 py-4"
             >
               <View
                 className={`w-7 h-7 rounded-lg border-2 items-center justify-center ${

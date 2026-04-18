@@ -100,7 +100,7 @@ export default function PatientHome() {
                     {slots.map((_, i) => (
                       <View
                         key={i}
-                        className={`rounded-full ${i === activeIndex ? "w-3 h-3 bg-primary" : "w-2 h-2 bg-primary/30"}`}
+                        className={`w-2 h-2 rounded-full ${i === activeIndex ? "bg-primary" : "bg-gray-300"}`}
                       />
                     ))}
                   </View>

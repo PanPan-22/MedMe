@@ -8,10 +8,14 @@
   .light {
     --color-primary: #062d13;
     --color-background: #f2fbf5;
+    --color-card: #ffffff;
+    --color-muted: #e5e7eb;
   }
 
   .dark {
-    --color-primary: #ffffff;
-    --color-background: #000000;
+    --color-primary: #86efac;
+    --color-background: #0a1410;
+    --color-card: #13231b;
+    --color-muted: #1f2e26;
   }
 }

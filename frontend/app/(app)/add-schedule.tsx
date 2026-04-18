@@ -25,7 +25,7 @@ export default function AddMedicineScreen() {
 
   return (
     <ScrollView className="bg-background px-4 pt-4 h-full">
-      <Stack.Screen options={{ headerShown: true, title: "Add Schedule" }} />
+      <Stack.Screen options={{ headerShown: true, title: t("add_schedule") }} />
       <View className="flex-row items-center gap-4 p-2 mb-4">
         <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
           <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
@@ -47,7 +47,7 @@ export default function AddMedicineScreen() {
             </Text>
             {!isConnected && (
               <Text className="text-white text-sm opacity-80" maxFontSizeMultiplier={1.2}>
-                No internet connection
+                {t("no_internet_connection")}
               </Text>
             )}
           </View>

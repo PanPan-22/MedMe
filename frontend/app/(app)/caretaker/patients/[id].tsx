@@ -2,13 +2,28 @@ import { Medication } from "@/components/local-db";
 import TimeComponent from "@/components/time-component";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
-import { router, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
+import {
+  router,
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+} from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, Pressable, Text, useWindowDimensions, View } from "react-native";
+import {
+  FlatList,
+  Image,
+  Pressable,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
-interface TimeSlot { time: string; meds: Medication[] }
+interface TimeSlot {
+  time: string;
+  meds: Medication[];
+}
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -33,7 +48,10 @@ function getUpcomingSlots(meds: Medication[], limit = 5): TimeSlot[] {
 }
 
 export default function PatientDetailScreen() {
-  const { id, patientName, patientAge } = useLocalSearchParams<{ id: string; patientName: string; patientAge: string }>();
+  const { id, patientName } = useLocalSearchParams<{
+    id: string;
+    patientName: string;
+  }>();
   const { t } = useTranslation();
   const { colors } = useTheme();
   const db = useSQLiteContext();
@@ -42,15 +60,26 @@ export default function PatientDetailScreen() {
 
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [patientImage, setPatientImage] = useState<string | null>(null);
 
-  useFocusEffect(useCallback(() => {
-    db.getAllAsync<Medication>("SELECT * FROM schedules WHERE patient_id = ?", [parseInt(id)])
-      .then((meds) => setSlots(getUpcomingSlots(meds)));
-  }, [id]));
+  useFocusEffect(
+    useCallback(() => {
+      db.getAllAsync<Medication>(
+        "SELECT * FROM schedules WHERE patient_id = ?",
+        [parseInt(id)],
+      ).then((meds) => setSlots(getUpcomingSlots(meds)));
+      db.getFirstAsync<{ image_uri: string | null }>(
+        "SELECT image_uri FROM patients WHERE id = ?",
+        [parseInt(id)],
+      ).then((row) => setPatientImage(row?.image_uri ?? null));
+    }, [id]),
+  );
 
   return (
     <View className="flex-1 bg-background">
-      <Stack.Screen options={{ headerShown: true, title: patientName ?? "Patient" }} />
+      <Stack.Screen
+        options={{ headerShown: true, title: patientName ?? t("patient_default_label") }}
+      />
 
       <FlatList
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
@@ -60,16 +89,39 @@ export default function PatientDetailScreen() {
           <>
             {/* Patient info */}
             <View className="items-center mb-6 gap-2">
-              <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()} className="self-start mb-2">
-                <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+              <Pressable
+                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                onPress={() => router.back()}
+                className="self-start mb-2"
+              >
+                <Ionicons
+                  name="arrow-back-outline"
+                  size={24}
+                  color={colors.text}
+                />
               </Pressable>
-              <Ionicons name="person-circle-outline" size={96} color={colors.primary} />
-              <Text className="text-2xl font-bold text-primary">{patientName}</Text>
-              {patientAge ? <Text className="text-primary/50">{patientAge} {t("years_old") ?? "years old"}</Text> : null}
+              {patientImage ? (
+                <Image
+                  source={{ uri: patientImage }}
+                  className="w-24 h-24 rounded-full"
+                  resizeMode="cover"
+                />
+              ) : (
+                <View className="w-24 h-24 rounded-full bg-primary/10 items-center justify-center">
+                  <Text className="text-primary font-bold text-3xl">
+                    {(patientName ?? "?").charAt(0)}
+                  </Text>
+                </View>
+              )}
+              <Text className="text-2xl font-bold text-primary">
+                {patientName}
+              </Text>
             </View>
 
             {/* Upcoming schedule carousel */}
-            <Text className="text-lg font-bold text-primary mb-3">{t("next_med")}</Text>
+            <Text className="text-lg font-bold text-primary mb-3">
+              {t("next_med")}
+            </Text>
             {slots.length > 0 ? (
               <View className="mb-6">
                 <FlatList
@@ -79,17 +131,33 @@ export default function PatientDetailScreen() {
                   data={slots}
                   keyExtractor={(item) => item.time}
                   onMomentumScrollEnd={(e) => {
-                    setActiveIndex(Math.round(e.nativeEvent.contentOffset.x / cardWidth));
+                    setActiveIndex(
+                      Math.round(e.nativeEvent.contentOffset.x / cardWidth),
+                    );
                   }}
                   renderItem={({ item }) => (
-                    <View style={{ width: cardWidth }} className="bg-primary rounded-2xl p-6 gap-3">
-                      <Text className="text-white/70 text-sm font-medium">{t("schedule")}</Text>
+                    <View
+                      style={{ width: cardWidth }}
+                      className="bg-primary rounded-2xl p-6 gap-3"
+                    >
                       <TimeComponent time={item.time} />
                       <View className="gap-1">
                         {item.meds.map((med) => (
-                          <View key={med.id} className="flex-row items-center gap-2">
-                            <Ionicons name="ellipse" size={8} color="rgba(255,255,255,0.7)" />
-                            <Text className="text-white/90 text-base" numberOfLines={1}>{med.medicine_name}</Text>
+                          <View
+                            key={med.id}
+                            className="flex-row items-center gap-2"
+                          >
+                            <Ionicons
+                              name="ellipse"
+                              size={8}
+                              color="rgba(255,255,255,0.7)"
+                            />
+                            <Text
+                              className="text-white/90 text-base"
+                              numberOfLines={1}
+                            >
+                              {med.medicine_name}
+                            </Text>
                           </View>
                         ))}
                       </View>
@@ -99,7 +167,10 @@ export default function PatientDetailScreen() {
                 {slots.length > 1 && (
                   <View className="flex-row justify-center gap-2 mt-3">
                     {slots.map((_, i) => (
-                      <View key={i} className={`rounded-full ${i === activeIndex ? "w-3 h-3 bg-primary" : "w-2 h-2 bg-primary/30"}`} />
+                      <View
+                        key={i}
+                        className={`w-2 h-2 rounded-full ${i === activeIndex ? "bg-primary" : "bg-gray-300"}`}
+                      />
                     ))}
                   </View>
                 )}
@@ -115,17 +186,31 @@ export default function PatientDetailScreen() {
           <View className="gap-3">
             <Pressable
               className="active:opacity-70 flex-row items-center justify-center gap-3 bg-primary rounded-xl p-4 w-full"
-              onPress={() => router.push({ pathname: "/management", params: { patientId: id, patientName: patientName ?? "" } })}
+              onPress={() =>
+                router.push({
+                  pathname: "/management",
+                  params: { patientId: id, patientName: patientName ?? "" },
+                })
+              }
             >
               <Ionicons name="medical-outline" size={24} color="white" />
-              <Text className="text-white text-xl font-semibold">{t("medicine_management")}</Text>
+              <Text className="text-white text-xl font-semibold">
+                {t("medicine_management")}
+              </Text>
             </Pressable>
             <Pressable
               className="active:opacity-70 flex-row items-center justify-center gap-3 bg-primary rounded-xl p-4 w-full"
-              onPress={() => router.push({ pathname: "/record", params: { patientId: id, patientName: patientName ?? "" } })}
+              onPress={() =>
+                router.push({
+                  pathname: "/record",
+                  params: { patientId: id, patientName: patientName ?? "" },
+                })
+              }
             >
               <Ionicons name="clipboard-outline" size={24} color="white" />
-              <Text className="text-white text-xl font-semibold">{t("record")}</Text>
+              <Text className="text-white text-xl font-semibold">
+                {t("record")}
+              </Text>
             </Pressable>
           </View>
         }

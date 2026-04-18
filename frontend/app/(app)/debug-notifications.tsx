@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Notifications from "expo-notifications";
 import { router, Stack, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 interface NotifInfo {
@@ -13,6 +14,7 @@ interface NotifInfo {
 }
 
 export default function DebugNotificationsScreen() {
+  const { t } = useTranslation();
   const [notifs, setNotifs] = useState<NotifInfo[]>([]);
 
   const refresh = useCallback(async () => {
@@ -44,7 +46,7 @@ export default function DebugNotificationsScreen() {
           onPress={refresh}
           className="active:opacity-70 bg-primary rounded-xl p-3 items-center flex-1"
         >
-          <Text className="text-white font-semibold">Refresh</Text>
+          <Text className="text-white font-semibold">{t("refresh")}</Text>
         </Pressable>
         <Pressable
           onPress={async () => {
@@ -53,18 +55,18 @@ export default function DebugNotificationsScreen() {
           }}
           className="active:opacity-70 bg-red-500 rounded-xl p-3 items-center flex-1"
         >
-          <Text className="text-white font-semibold">Clear All</Text>
+          <Text className="text-white font-semibold">{t("clear_all")}</Text>
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
         {notifs.length === 0 ? (
-          <Text className="text-center text-primary/40 mt-10">No scheduled notifications</Text>
+          <Text className="text-center text-primary/40 mt-10">{t("no_scheduled_notifications")}</Text>
         ) : (
           notifs.map((n) => (
-            <View key={n.id} className="bg-white border border-primary/10 rounded-2xl p-4 gap-1">
+            <View key={n.id} className="bg-card border border-primary/10 rounded-2xl p-4 gap-1">
               <Text className="text-xs text-primary/40 font-mono" numberOfLines={1}>{n.id}</Text>
-              <Text className="text-primary font-bold text-base">{n.title ?? "(no title)"}</Text>
-              <Text className="text-primary/70 text-sm">{n.body ?? "(no body)"}</Text>
+              <Text className="text-primary font-bold text-base">{n.title ?? t("no_title_fallback")}</Text>
+              <Text className="text-primary/70 text-sm">{n.body ?? t("no_body_fallback")}</Text>
               <Text className="text-primary/40 text-xs font-mono mt-1">data: {n.data}</Text>
               <Text className="text-primary/40 text-xs font-mono">trigger: {n.trigger}</Text>
             </View>
