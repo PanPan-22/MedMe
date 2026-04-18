@@ -18,6 +18,8 @@ export interface Medication {
   repeat_days: string;
   start_date: string;
   end_date: string;
+  patient_id?: number | null;
+  notification_id?: string;
 }
 
 async function openDatabase(): Promise<SQLiteDatabase> {
@@ -40,19 +42,6 @@ async function openDatabase(): Promise<SQLiteDatabase> {
   }
 }
 
-const medicineExists = async (medicineName: string): Promise<boolean> => {
-  if (!db) return false;
-  try {
-    const result = await db.getFirstAsync(
-      "SELECT medicine_id FROM schedules WHERE medicine_name = ?",
-      [medicineName],
-    );
-    return result ? true : false;
-  } catch (error) {
-    console.error("Error checking medicine existence:", error);
-    return false;
-  }
-};
 
 export const Length = async (db: any) => {
   if (!db) return 0;
@@ -76,13 +65,11 @@ export async function saveToDB(db: any, note: Medication) : Promise<boolean> {
     return false;
   }
   
-  note.id = await Length(db) + 1; // This is a simple way to generate an ID, but it can lead to issues if records are deleted. Consider using AUTOINCREMENT in the database schema for a more robust solution.
   console.log("Inserting medicine note:", note);
   try {
-    await db.runAsync(
-      "INSERT INTO schedules (id, medicine_name, count, type, whenToTake, additional, stock, expiration_date, image_uri, repeat_days, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    const result = await db.runAsync(
+      "INSERT INTO schedules (medicine_name, count, type, whenToTake, additional, stock, expiration_date, image_uri, repeat_days, start_date, end_date, patient_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
-        note.id,
         note.medicine_name,
         note.count,
         note.type,
@@ -94,8 +81,10 @@ export async function saveToDB(db: any, note: Medication) : Promise<boolean> {
         note.repeat_days,
         note.start_date,
         note.end_date,
+        note.patient_id ?? null,
       ],
     );
+    note.id = result.lastInsertRowId;
     console.log("Medicine note inserted successfully");
     return true;
   } catch (error) {

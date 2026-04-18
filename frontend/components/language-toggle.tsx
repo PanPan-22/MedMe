@@ -22,7 +22,7 @@ export default function LanguageToggle() {
       <Text style={{ opacity: isEn ? 1 : 0.3 }} className="text-base font-bold text-primary">EN</Text>
       <Text className="text-base text-gray-300">|</Text>
       <Text style={{ opacity: !isEn ? 1 : 0.3 }} className="text-base">🇹🇭</Text>
-      <Text style={{ opacity: !isEn ? 1 : 0.3 }} className="text-base font-bold text-primary">TH</Text>
+      <Text style={{ opacity: !isEn ? 1 : 0.3 }} className="text-base font-bold text-primary">ไทย</Text>
     </Pressable>
   );
 }

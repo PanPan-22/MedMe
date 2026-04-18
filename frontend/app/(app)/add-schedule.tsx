@@ -3,7 +3,7 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import NetInfo from "@react-native-community/netinfo";
 import { useTheme } from "@react-navigation/native";
-import { Link, router, Stack } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
@@ -11,6 +11,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 export default function AddMedicineScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { patientId, patientName } = useLocalSearchParams<{ patientId?: string; patientName?: string }>();
   const [isConnected, setIsConnected] = useState<boolean | null>(true);
 
   useEffect(() => {
@@ -19,6 +20,9 @@ export default function AddMedicineScreen() {
     });
     return () => unsubscribe();
   }, []);
+
+  const extraParams = patientId ? { patientId, patientName: patientName ?? "" } : {};
+
   return (
     <ScrollView className="bg-background px-4 pt-4 h-full">
       <Stack.Screen options={{ headerShown: true, title: "Add Schedule" }} />
@@ -29,38 +33,34 @@ export default function AddMedicineScreen() {
         <Text className="text-2xl font-bold text-primary">{t("add_schedule")}</Text>
       </View>
       <View className="flex-column items-center justify-around gap-4 p-2 mb-4 w-full">
-        <Link
-          href="/read-label"
-          push
-          asChild
-          disabled={!isConnected} // Disable the link if offline
+        <Pressable
+          disabled={!isConnected}
+          onPress={() => router.push({ pathname: "/read-label", params: extraParams })}
+          className={`flex-column items-center justify-center w-full rounded-3xl py-10 gap-3 ${
+            isConnected ? "bg-primary" : "bg-gray-400"
+          }`}
         >
-          <Pressable
-            className={`flex-column items-center justify-center w-full h-[20rem] rounded-3xl pt-4 ${
-              isConnected ? "bg-primary" : "bg-gray-400"
-            }`}
-          >
-            <Feather name="camera" size={120} color="white" />
-            <View className="items-center">
-              <Text className="text-white text-6xl leading-[90px]">
-                {t("read_label")}
-              </Text>
-              {!isConnected && (
-                <Text className="text-white text-xl mt-2">
-                  No internet connection
-                </Text>
-              )}
-            </View>
-          </Pressable>
-        </Link>
-        <Link href="/manual-add" push asChild>
-          <Pressable className="flex-column items-center justify-center bg-primary w-full h-[20rem] rounded-3xl pt-4">
-            <FontAwesome name="calendar" size={120} color="white" />
-            <Text className="text-white text-6xl leading-[90px]">
-              {t("fill_field")}
+          <Feather name="camera" size={64} color="white" />
+          <View className="items-center gap-1">
+            <Text className="text-white text-3xl font-semibold" maxFontSizeMultiplier={1.2}>
+              {t("read_label")}
             </Text>
-          </Pressable>
-        </Link>
+            {!isConnected && (
+              <Text className="text-white text-sm opacity-80" maxFontSizeMultiplier={1.2}>
+                No internet connection
+              </Text>
+            )}
+          </View>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push({ pathname: "/manual-add", params: extraParams })}
+          className="flex-column items-center justify-center bg-primary w-full rounded-3xl py-10 gap-3"
+        >
+          <FontAwesome name="calendar" size={64} color="white" />
+          <Text className="text-white text-3xl font-semibold" maxFontSizeMultiplier={1.2}>
+            {t("fill_field")}
+          </Text>
+        </Pressable>
       </View>
     </ScrollView>
   );

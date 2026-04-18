@@ -9,8 +9,11 @@ import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import { registerSheet, SheetProvider } from "react-native-actions-sheet";
+
+// Cap system font scaling globally so fixed-height layouts don't break
+(Text as any).defaultProps = { ...((Text as any).defaultProps ?? {}), maxFontSizeMultiplier: 1.3 };
 import "../global.css";
 import "../i18n";
 

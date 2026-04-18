@@ -1,12 +1,67 @@
 import { useAuth, useUser } from "@clerk/expo";
 import Feather from "@expo/vector-icons/Feather";
-import { Link, Redirect, Stack } from "expo-router";
-import { Pressable, Text } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import * as Notifications from "expo-notifications";
+import { useNotifications } from "@/hooks/use-notifications";
+import { Link, Redirect, router, Stack } from "expo-router";
+import { useEffect } from "react";
+import { Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+function AppHeader({ displayName }: { displayName: string }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      className="w-full flex-row items-center justify-between px-4 pb-4 bg-primary"
+      style={{ paddingTop: insets.top + 12 }}
+    >
+      <Text
+        className="text-white text-xl font-semibold flex-1 mr-4"
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.2}
+      >
+        {displayName}
+      </Text>
+      <Link href="/settings" push asChild>
+        <Pressable hitSlop={16}>
+          <Feather name="settings" size={24} color="white" />
+        </Pressable>
+      </Link>
+    </View>
+  );
+}
 
 export default function AppLayout() {
   const { isSignedIn, isLoaded } = useAuth();
   const { user } = useUser();
+  useNotifications();
+
+  useEffect(() => {
+    // Handle notification tap (app already open or resuming from background)
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as any;
+      if (data?.time) {
+        router.push({
+          pathname: "/notification-modal",
+          params: { time: data.time, patientId: data.patientId ?? "" },
+        });
+      }
+    });
+
+    // Handle cold-start notification tap
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response?.notification.request.content.data) {
+        const data = response.notification.request.content.data as any;
+        if (data?.time) {
+          router.push({
+            pathname: "/notification-modal",
+            params: { time: data.time, patientId: data.patientId ?? "" },
+          });
+        }
+      }
+    });
+
+    return () => sub.remove();
+  }, []);
 
   if (!isLoaded) return null;
   if (!isSignedIn) return <Redirect href="/(auth)" />;
@@ -20,20 +75,14 @@ export default function AppLayout() {
   return (
     <Stack
       screenOptions={{
-        header: () => (
-          <SafeAreaView className="flex-row w-full h-24 items-center justify-between p-4 bg-primary">
-            <Text className="text-white text-xl truncate w-1/2" numberOfLines={1}>
-              {displayName}
-            </Text>
-            <Link href="/settings" push asChild>
-              <Pressable>
-                <Feather name="settings" size={24} color="white" />
-              </Pressable>
-            </Link>
-          </SafeAreaView>
-        ),
+        header: () => <AppHeader displayName={displayName} />,
         headerShown: true,
       }}
-    />
+    >
+      <Stack.Screen
+        name="notification-modal"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+    </Stack>
   );
 }

@@ -2,11 +2,12 @@ import * as SQLite from "expo-sqlite";
 
 export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
   try {
+    await db.execAsync(`DROP TABLE IF EXISTS medication_logs;`);
     await db.execAsync(`DROP TABLE IF EXISTS schedules;`);
     await db.execAsync(`
       PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS schedules (
-      id INTEGER PRIMARY KEY NOT NULL,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       medicine_name TEXT NOT NULL,
       type TEXT,
       count INTEGER,
@@ -18,7 +19,8 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
       image_uri TEXT,
       repeat_days TEXT DEFAULT 'Mon,Tue,Wed,Thu,Fri,Sat,Sun',
       start_date TEXT,
-      end_date TEXT
+      end_date TEXT,
+      patient_id INTEGER
     );
     `);
 
@@ -30,6 +32,18 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
       age INTEGER NOT NULL
       );
       `);
+
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS medication_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        medication_id INTEGER NOT NULL,
+        scheduled_time TEXT NOT NULL,
+        log_date TEXT NOT NULL,
+        timestamp TEXT NOT NULL,
+        status TEXT NOT NULL,
+        patient_id INTEGER
+      );
+    `);
 
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS user_profile (

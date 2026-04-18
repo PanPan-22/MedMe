@@ -1,4 +1,5 @@
-import { saveToDB as addMedicine } from "@/components/local-db";
+import { Medication, saveToDB as addMedicine } from "@/components/local-db";
+import { scheduleNotificationsForMed } from "@/hooks/use-notifications";
 import { useToast } from "@/context/toast-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
@@ -10,7 +11,15 @@ import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-nativ
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SheetManager } from "react-native-actions-sheet";
 
+const formatDate = (d: Date) =>
+  `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`;
+
 const MEDICATION_TYPES = ["Pills", "Capsule", "Injection", "Other"];
+const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_KEYS: Record<string, string> = {
+  Mon: "day_mon", Tue: "day_tue", Wed: "day_wed", Thu: "day_thu",
+  Fri: "day_fri", Sat: "day_sat", Sun: "day_sun",
+};
 
 export default function ConfirmMedicationScreen() {
   const { t } = useTranslation();
@@ -18,6 +27,7 @@ export default function ConfirmMedicationScreen() {
   const { showToast } = useToast();
   const db = useSQLiteContext();
   const params = useLocalSearchParams();
+  const pid = params.patientId ? parseInt(params.patientId as string) : null;
 
   const [name, setName] = useState((params.medicine_name as string) || "");
   const [amount, setAmount] = useState((params.count as string) || "");
@@ -26,8 +36,10 @@ export default function ConfirmMedicationScreen() {
   const [stock, setStock] = useState("");
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [times, setTimes] = useState<string[]>([]);
+  const [selectedDays, setSelectedDays] = useState<string[]>(DAYS_OF_WEEK);
   const [expirationDate, setExpirationDate] = useState<Date | null>(null);
   const [isTimePickerVisible, setTimePickerVisible] = useState(false);
+  const [editingTimeIndex, setEditingTimeIndex] = useState<number | null>(null);
   const [isExpiryPickerVisible, setExpiryPickerVisible] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -42,22 +54,35 @@ export default function ConfirmMedicationScreen() {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = "Required";
     if (!amount.trim() || parseInt(amount) <= 0) e.amount = "Enter a valid amount";
+    if (stock.trim() && parseInt(stock) < 0) e.stock = "Cannot be negative";
+    if (selectedDays.length === 0) e.days = "Select at least one day";
     if (times.length === 0) e.times = "Add at least one time";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleTimeConfirm = (date: Date) => {
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    const newTime = `${hours}:${minutes}`;
-    if (!times.includes(newTime)) setTimes([...times, newTime].sort());
+    const h = date.getHours().toString().padStart(2, "0");
+    const m = date.getMinutes().toString().padStart(2, "0");
+    const newTime = `${h}:${m}`;
+    if (editingTimeIndex !== null) {
+      const updated = times.map((t, i) => (i === editingTimeIndex ? newTime : t));
+      setTimes([...new Set(updated)].sort());
+    } else if (!times.includes(newTime)) {
+      setTimes([...times, newTime].sort());
+    }
+    setErrors((e) => ({ ...e, times: "" }));
+    setEditingTimeIndex(null);
     setTimePickerVisible(false);
   };
 
   const removeTime = (index: number) => {
     setTimes(times.filter((_, i) => i !== index));
   };
+
+  const pickerDate = editingTimeIndex !== null
+    ? (() => { const [h, m] = times[editingTimeIndex].split(":"); const d = new Date(); d.setHours(+h, +m, 0); return d; })()
+    : new Date();
 
   const handleImagePicker = async () => {
     const result = (await SheetManager.show("image-picker-sheet")) as { uri: string } | undefined;
@@ -140,13 +165,40 @@ export default function ConfirmMedicationScreen() {
           <Text className="text-base font-semibold text-primary">{t("stock")}</Text>
           <TextInput
             value={stock}
-            onChangeText={setStock}
+            onChangeText={(v) => { setStock(v); setErrors((e) => ({ ...e, stock: "" })); }}
             keyboardType="numeric"
             placeholder="eg. 30"
             placeholderTextColor="#888888"
-            className="text-primary bg-white border border-primary rounded-2xl px-4 text-base h-12"
+            className={`text-primary bg-white border rounded-2xl px-4 text-base h-12 ${errors.stock ? "border-red-500" : "border-primary"}`}
           />
+          {errors.stock ? <Text className="text-red-500 text-xs">{errors.stock}</Text> : null}
         </View>
+      </View>
+
+      {/* Repeat On */}
+      <View className="gap-2 px-2 mb-4">
+        <Text className="text-base font-semibold text-primary">{t("repeat_on")}</Text>
+        <View className="flex-row justify-between">
+          {DAYS_OF_WEEK.map((day) => {
+            const isSelected = selectedDays.includes(day);
+            return (
+              <Pressable
+                key={day}
+                onPress={() => {
+                  const next = isSelected ? selectedDays.filter((d) => d !== day) : [...selectedDays, day];
+                  setSelectedDays(next);
+                  if (next.length > 0) setErrors((e) => ({ ...e, days: "" }));
+                }}
+                className={`w-10 h-10 rounded-full items-center justify-center ${isSelected ? "bg-primary border-2 border-primary" : "bg-white border border-gray-300"}`}
+              >
+                <Text className={`text-xs font-bold ${isSelected ? "text-white" : "text-gray-400"}`}>
+                  {t(DAY_KEYS[day])}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {errors.days ? <Text className="text-red-500 text-xs">{errors.days}</Text> : null}
       </View>
 
       {/* Schedule */}
@@ -154,16 +206,16 @@ export default function ConfirmMedicationScreen() {
         <Text className="text-base font-semibold text-primary">{t("schedule")}</Text>
         <View className="flex-row flex-wrap gap-2 items-center">
           {times.map((time, index) => (
-            <View key={index} className="flex-row items-center bg-primary/10 border border-primary rounded-full px-3 py-1.5">
+            <Pressable key={index} onPress={() => { setEditingTimeIndex(index); setTimePickerVisible(true); }} className="flex-row items-center bg-primary/10 border border-primary rounded-full px-3 py-1.5">
               <Text className="text-primary font-bold mr-2">{time}</Text>
-              <Pressable onPress={() => removeTime(index)}>
+              <Pressable onPress={(e) => { e.stopPropagation(); removeTime(index); }}>
                 <Ionicons name="close-circle" size={18} color="#ef4444" />
               </Pressable>
-            </View>
+            </Pressable>
           ))}
           <Pressable
             className="flex-row items-center bg-white border border-dashed border-primary rounded-full px-3 py-1.5"
-            onPress={() => setTimePickerVisible(true)}
+            onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
           >
             <Ionicons name="add" size={16} color={colors.primary} />
             <Text className="text-primary font-medium ml-1 text-sm">{t("add_time")}</Text>
@@ -180,7 +232,7 @@ export default function ConfirmMedicationScreen() {
           className="bg-white border border-primary rounded-2xl px-4 h-12 justify-center"
         >
           <Text className="text-primary">
-            {expirationDate ? expirationDate.toLocaleDateString() : "Select date"}
+            {expirationDate ? formatDate(expirationDate) : "Select date"}
           </Text>
         </Pressable>
       </View>
@@ -205,7 +257,7 @@ export default function ConfirmMedicationScreen() {
           className="active:opacity-70 items-center justify-center bg-primary rounded-2xl p-4 w-full shadow-sm"
           onPress={async () => {
             if (!validate()) return;
-            const success = await addMedicine(db, {
+            const medData: Medication = {
               id: 0,
               medicine_name: name.trim(),
               type: medType,
@@ -215,8 +267,34 @@ export default function ConfirmMedicationScreen() {
               stock: parseInt(stock) || 0,
               expiration_date: expirationDate ? expirationDate.toISOString().split("T")[0] : "",
               image_uri: imageUri ?? "",
-            });
+              repeat_days: selectedDays.join(","),
+              start_date: new Date().toISOString().split("T")[0],
+              end_date: (() => {
+                const s = parseInt(stock) || 0;
+                const a = parseInt(amount) || 1;
+                const days = times.length > 0 ? Math.floor(s / (a * times.length)) : 0;
+                const end = new Date();
+                end.setDate(end.getDate() + days);
+                return end.toISOString().split("T")[0];
+              })(),
+              patient_id: pid,
+            };
+            const success = await addMedicine(db, medData);
             if (success) {
+              try {
+                const notifIds = await scheduleNotificationsForMed({
+                  medicineName: name.trim(),
+                  whenToTake: times.join(","),
+                  repeatDays: selectedDays.join(","),
+                  stock: parseInt(stock) || 0,
+                  count: parseInt(amount) || 1,
+                  startDate: new Date().toISOString().split("T")[0],
+                  patientId: pid,
+                });
+                await db.runAsync("UPDATE schedules SET notification_id = ? WHERE id = ?", [notifIds, medData.id]);
+              } catch (e) {
+                console.error("Failed to schedule notifications:", e);
+              }
               showToast("Medication saved successfully!");
               router.dismiss(2);
             } else {
@@ -228,7 +306,7 @@ export default function ConfirmMedicationScreen() {
         </Pressable>
       </View>
 
-      <DateTimePickerModal isVisible={isTimePickerVisible} mode="time" onConfirm={handleTimeConfirm} onCancel={() => setTimePickerVisible(false)} />
+      <DateTimePickerModal isVisible={isTimePickerVisible} mode="time" date={pickerDate} onConfirm={handleTimeConfirm} onCancel={() => { setEditingTimeIndex(null); setTimePickerVisible(false); }} />
       <DateTimePickerModal isVisible={isExpiryPickerVisible} mode="date" onConfirm={(d) => { setExpirationDate(d); setExpiryPickerVisible(false); }} onCancel={() => setExpiryPickerVisible(false)} />
     </ScrollView>
   );

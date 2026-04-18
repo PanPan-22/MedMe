@@ -36,6 +36,7 @@ export default function SignUpScreen() {
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
 
   const loading = fetchStatus === "fetching";
@@ -78,11 +79,11 @@ export default function SignUpScreen() {
       >
         <View className="gap-6">
           <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-3">
+            <View className="flex-row items-center gap-3 shrink">
               <Pressable hitSlop={20} onPress={() => router.back()}>
                 <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
               </Pressable>
-              <Text className="text-3xl font-bold text-primary">{t("register")}</Text>
+              <Text className="text-3xl font-bold text-primary shrink" numberOfLines={1} adjustsFontSizeToFit>{t("register")}</Text>
             </View>
             <LanguageToggle />
           </View>
@@ -153,16 +154,21 @@ export default function SignUpScreen() {
 
           <View className="gap-2">
             <Text className="text-base font-semibold text-primary">{t("password")}</Text>
-            <TextInput
-              value={password}
-              onChangeText={(v) => { setPassword(v); setShowErrors(false); }}
-              placeholder="••••••••"
-              placeholderTextColor="#888888"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              className={`text-primary bg-white border rounded-2xl px-4 py-3 text-base ${passwordError ? "border-red-500" : "border-primary"}`}
-            />
+            <View className={`flex-row items-center bg-white border rounded-2xl px-4 ${passwordError ? "border-red-500" : "border-primary"}`}>
+              <TextInput
+                value={password}
+                onChangeText={(v) => { setPassword(v); setShowErrors(false); }}
+                placeholder="••••••••"
+                placeholderTextColor="#888888"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                className="flex-1 py-3 text-base text-primary"
+              />
+              <Pressable hitSlop={12} onPress={() => setShowPassword(p => !p)}>
+                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#888" />
+              </Pressable>
+            </View>
             {passwordError && (
               <Text className="text-red-500 text-xs">{passwordError.longMessage ?? passwordError.message}</Text>
             )}

@@ -1,71 +1,9 @@
-import TimeComponent from "@/components/time-component";
-import { useNotifications } from "@/hooks/use-notifications";
-import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { Link, Stack } from "expo-router";
-import { useTranslation } from "react-i18next";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { useUser } from "@clerk/expo";
+import { Redirect } from "expo-router";
 
-const dummy = [
-  { id: "1", name: "Medication A" },
-  { id: "2", name: "Medication B" },
-  { id: "3", name: "Medication C" },
-];
-
-export default function HomeScreen() {
-  const { t } = useTranslation();
-  const { triggerNotification } = useNotifications();
-  return (
-    <View className="bg-background pt-4 px-4 h-full">
-      <Stack.Screen options={{ headerShown: true, title: "Home" }} />
-      <View className="items-center">
-        <View className="flex-row items-center justify-between gap-4 p-2 mb-4 w-full mx-4">
-          <Text className="text-3xl text-primary">{t("next_med")}</Text>
-          <View>
-            <TimeComponent/>
-          </View>
-        </View>
-        <View className="bg-white border border-primary rounded-2xl w-full p-2 mb-4">
-          <FlatList
-            data={dummy}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View className="flex-row items-center justify-between border-b border-gray-200 p-2">
-                <Text className="text-lg">{item.name}</Text>
-              </View>
-            )}
-          />
-        </View>
-        <Link href="/management" push asChild>
-          <Pressable className="flex-row items-center justify-center gap-4 bg-primary rounded-xl p-4 w-full">
-            <FontAwesome6 name="pills" size={32} color="white" />
-            <Text className="text-2xl text-white">
-              {t("medicine_management")}
-            </Text>
-          </Pressable>
-        </Link>
-        <View className="h-4" />
-        <Link href="/management" push asChild>
-          <Pressable className="flex-row items-center justify-center gap-4 bg-primary rounded-xl p-4 w-full">
-            <Ionicons name="clipboard-outline" size={32} color="white" />
-            <Text className="text-2xl text-white">{t("record")}</Text>
-          </Pressable>
-        </Link>
-        <View className="h-4" />
-        <Link href="/patients" push asChild>
-          <Pressable className="flex-row items-center justify-center gap-4 bg-primary rounded-xl p-4 w-full">
-            <Ionicons name="person-outline" size={32} color="white" />
-            <Text className="text-2xl text-white">{t("patients")}</Text>
-          </Pressable>
-        </Link>
-        <View className="h-4" />
-        <Pressable
-          className="flex-row items-center justify-center gap-4 bg-primary rounded-xl p-4 w-full"
-          onPress={triggerNotification}
-        >
-          <Text className="text-2xl text-white">Trigger Notification</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
+export default function RootIndex() {
+  const { user } = useUser();
+  const role = (user?.unsafeMetadata as any)?.role as string | undefined;
+  if (role === "caretaker") return <Redirect href="/caretaker" />;
+  return <Redirect href="/patient" />;
 }

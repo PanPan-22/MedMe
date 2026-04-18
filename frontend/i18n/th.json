@@ -66,5 +66,9 @@
   "type_pills": "ยาเม็ด",
   "type_capsule": "ยาแคปซูล",
   "type_injection": "ยาฉีด",
-  "type_other": "อื่นๆ"
+  "type_other": "อื่นๆ",
+  "years_old": "ปี",
+  "confirm": "ยืนยัน",
+  "delete_confirm_med": "ลบยานี้?",
+  "medications": "รายการยา"
 }

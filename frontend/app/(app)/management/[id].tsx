@@ -1,12 +1,13 @@
 import { Medication } from "@/components/local-db";
 import { useToast } from "@/context/toast-context";
+import { cancelNotificationsForMed, scheduleNotificationsForMed } from "@/hooks/use-notifications";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SheetManager } from "react-native-actions-sheet";
 
@@ -17,6 +18,9 @@ const DAY_KEYS: Record<string, string> = {
   Mon: "day_mon", Tue: "day_tue", Wed: "day_wed", Thu: "day_thu",
   Fri: "day_fri", Sat: "day_sat", Sun: "day_sun",
 };
+
+const formatDate = (d: Date) =>
+  `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`;
 
 const TYPE_KEYS: Record<string, string> = {
   Pills: "type_pills", Capsule: "type_capsule", Injection: "type_injection", Other: "type_other",
@@ -58,12 +62,20 @@ export default function MedicineDetailScreen() {
   const [times, setTimes] = useState<string[]>([]);
   const [selectedDays, setSelectedDays] = useState<string[]>(DAYS_OF_WEEK);
   const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
   const [expirationDate, setExpirationDate] = useState<Date | null>(null);
   const [isTimePickerVisible, setTimePickerVisible] = useState(false);
+  const [editingTimeIndex, setEditingTimeIndex] = useState<number | null>(null);
   const [isStartPickerVisible, setStartPickerVisible] = useState(false);
-  const [isEndPickerVisible, setEndPickerVisible] = useState(false);
   const [isExpiryPickerVisible, setExpiryPickerVisible] = useState(false);
+
+  const calcEndDate = (start: Date, stockVal: string, amountVal: string, timesCount: number): Date => {
+    const s = parseInt(stockVal) || 0;
+    const a = parseInt(amountVal) || 1;
+    const days = timesCount > 0 ? Math.floor(s / (a * timesCount)) : 0;
+    const end = new Date(start);
+    end.setDate(end.getDate() + days);
+    return end;
+  };
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => { fetchMedication(); }, []);
@@ -87,7 +99,6 @@ export default function MedicineDetailScreen() {
     setTimes(m.whenToTake ? m.whenToTake.split(",").filter(Boolean) : []);
     setSelectedDays(m.repeat_days ? m.repeat_days.split(",").filter(Boolean) : DAYS_OF_WEEK);
     setStartDate(m.start_date ? new Date(m.start_date) : new Date());
-    setEndDate(m.end_date ? new Date(m.end_date) : new Date());
     setExpirationDate(m.expiration_date ? new Date(m.expiration_date) : null);
   };
 
@@ -101,6 +112,8 @@ export default function MedicineDetailScreen() {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = "Required";
     if (!amount.trim() || parseInt(amount) <= 0) e.amount = "Enter a valid amount";
+    if (stock.trim() && parseInt(stock) < 0) e.stock = "Cannot be negative";
+    if (selectedDays.length === 0) e.days = "Select at least one day";
     if (times.length === 0) e.times = "Add at least one time";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -109,13 +122,23 @@ export default function MedicineDetailScreen() {
   const save = async () => {
     if (!validate()) return;
     try {
+      await cancelNotificationsForMed(med?.notification_id ?? "");
+      const notifIds = await scheduleNotificationsForMed({
+        medicineName: name.trim(),
+        whenToTake: times.join(","),
+        repeatDays: selectedDays.join(","),
+        stock: parseInt(stock) || 0,
+        count: parseInt(amount) || 1,
+        startDate: startDate.toISOString().split("T")[0],
+        patientId: med?.patient_id,
+      });
       await db.runAsync(
-        "UPDATE schedules SET medicine_name=?, type=?, count=?, whenToTake=?, additional=?, stock=?, expiration_date=?, image_uri=?, repeat_days=?, start_date=?, end_date=? WHERE id=?",
+        "UPDATE schedules SET medicine_name=?, type=?, count=?, whenToTake=?, additional=?, stock=?, expiration_date=?, image_uri=?, repeat_days=?, start_date=?, end_date=?, notification_id=? WHERE id=?",
         [name.trim(), medType, parseInt(amount) || 0, times.join(","), note.trim(),
           parseInt(stock) || 0, expirationDate ? expirationDate.toISOString().split("T")[0] : "",
           imageUri ?? "", selectedDays.join(","),
-          startDate.toISOString().split("T")[0], endDate.toISOString().split("T")[0],
-          id.toString()],
+          startDate.toISOString().split("T")[0], calcEndDate(startDate, stock, amount, times.length).toISOString().split("T")[0],
+          notifIds, id.toString()],
       );
       showToast("Medication updated!");
       setEditing(false);
@@ -123,13 +146,40 @@ export default function MedicineDetailScreen() {
     } catch { showToast("Failed to update", "error"); }
   };
 
+  const deleteMed = () => {
+    Alert.alert(t("delete"), t("delete_confirm_med") ?? "Delete this medication?", [
+      { text: t("cancel"), style: "cancel" },
+      {
+        text: t("delete"),
+        style: "destructive",
+        onPress: async () => {
+          await cancelNotificationsForMed(med?.notification_id ?? "");
+          await db.runAsync("DELETE FROM schedules WHERE id = ?", [id.toString()]);
+          showToast("Medication deleted");
+          router.back();
+        },
+      },
+    ]);
+  };
+
   const handleTimeConfirm = (date: Date) => {
     const h = date.getHours().toString().padStart(2, "0");
     const m = date.getMinutes().toString().padStart(2, "0");
     const newTime = `${h}:${m}`;
-    if (!times.includes(newTime)) setTimes([...times, newTime].sort());
+    if (editingTimeIndex !== null) {
+      const updated = times.map((t, i) => (i === editingTimeIndex ? newTime : t));
+      setTimes([...new Set(updated)].sort());
+    } else if (!times.includes(newTime)) {
+      setTimes([...times, newTime].sort());
+    }
+    setErrors((e) => ({ ...e, times: "" }));
+    setEditingTimeIndex(null);
     setTimePickerVisible(false);
   };
+
+  const pickerDate = editingTimeIndex !== null
+    ? (() => { const [h, m] = times[editingTimeIndex].split(":"); const d = new Date(); d.setHours(+h, +m, 0); return d; })()
+    : new Date();
 
   const handleImagePicker = async () => {
     const result = (await SheetManager.show("image-picker-sheet")) as { uri: string } | undefined;
@@ -265,12 +315,13 @@ export default function MedicineDetailScreen() {
                 <Text className="text-base font-semibold text-primary">{t("stock")}</Text>
                 <TextInput
                   value={stock}
-                  onChangeText={setStock}
+                  onChangeText={(v) => { setStock(v); setErrors((e) => ({ ...e, stock: "" })); }}
                   keyboardType="numeric"
                   placeholder="eg. 30"
                   placeholderTextColor="#888888"
-                  className="text-primary bg-white border border-primary rounded-2xl px-4 py-3 text-base"
+                  className={`text-primary bg-white border rounded-2xl px-4 py-3 text-base ${errors.stock ? "border-red-500" : "border-primary"}`}
                 />
+                {errors.stock ? <Text className="text-red-500 text-xs">{errors.stock}</Text> : null}
               </View>
             </View>
 
@@ -279,16 +330,16 @@ export default function MedicineDetailScreen() {
               <Text className="text-base font-semibold text-primary">{t("schedule")}</Text>
               <View className="flex-row flex-wrap gap-2 items-center">
                 {times.map((time, index) => (
-                  <View key={time} className="flex-row items-center bg-primary/10 border border-primary rounded-full px-3 py-1.5">
+                  <Pressable key={time} onPress={() => { setEditingTimeIndex(index); setTimePickerVisible(true); }} className="flex-row items-center bg-primary/10 border border-primary rounded-full px-3 py-1.5">
                     <Text className="text-primary font-bold mr-2">{time}</Text>
-                    <Pressable onPress={() => setTimes(times.filter((_, i) => i !== index))}>
+                    <Pressable onPress={(e) => { e.stopPropagation(); setTimes(times.filter((_, i) => i !== index)); }}>
                       <Ionicons name="close-circle" size={18} color="#ef4444" />
                     </Pressable>
-                  </View>
+                  </Pressable>
                 ))}
                 <Pressable
                   className="flex-row items-center bg-white border border-dashed border-primary rounded-full px-3 py-1.5"
-                  onPress={() => setTimePickerVisible(true)}
+                  onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
                 >
                   <Ionicons name="add" size={16} color={colors.primary} />
                   <Text className="text-primary font-medium ml-1 text-sm">{t("add_time")}</Text>
@@ -306,7 +357,11 @@ export default function MedicineDetailScreen() {
                   return (
                     <Pressable
                       key={day}
-                      onPress={() => setSelectedDays(isSelected ? selectedDays.filter((d) => d !== day) : [...selectedDays, day])}
+                      onPress={() => {
+                        const next = isSelected ? selectedDays.filter((d) => d !== day) : [...selectedDays, day];
+                        setSelectedDays(next);
+                        if (next.length > 0) setErrors((e) => ({ ...e, days: "" }));
+                      }}
                       className={`w-10 h-10 rounded-full items-center justify-center ${isSelected ? "bg-primary border-2 border-primary" : "bg-white border border-gray-300"}`}
                     >
                       <Text className={`text-xs font-bold ${isSelected ? "text-white" : "text-gray-400"}`}>
@@ -316,6 +371,7 @@ export default function MedicineDetailScreen() {
                   );
                 })}
               </View>
+              {errors.days ? <Text className="text-red-500 text-xs">{errors.days}</Text> : null}
             </View>
 
             {/* Dates */}
@@ -323,19 +379,19 @@ export default function MedicineDetailScreen() {
               <View className="flex-1 gap-1">
                 <Text className="text-sm font-semibold text-primary">{t("start_date")}</Text>
                 <Pressable onPress={() => setStartPickerVisible(true)} className="bg-white border border-primary rounded-xl py-3 px-3">
-                  <Text className="text-primary text-xs text-center">{startDate.toLocaleDateString()}</Text>
+                  <Text className="text-primary text-xs text-center">{formatDate(startDate)}</Text>
                 </Pressable>
               </View>
               <View className="flex-1 gap-1">
                 <Text className="text-sm font-semibold text-primary">{t("end_date")}</Text>
-                <Pressable onPress={() => setEndPickerVisible(true)} className="bg-white border border-primary rounded-xl py-3 px-3">
-                  <Text className="text-primary text-xs text-center">{endDate.toLocaleDateString()}</Text>
-                </Pressable>
+                <View className="bg-primary/5 border border-primary/30 rounded-xl py-3 px-3">
+                  <Text className="text-primary/60 text-xs text-center">{formatDate(calcEndDate(startDate, stock, amount, times.length))}</Text>
+                </View>
               </View>
               <View className="flex-1 gap-1">
                 <Text className="text-sm font-semibold text-primary">{t("expiry_date")}</Text>
                 <Pressable onPress={() => setExpiryPickerVisible(true)} className="bg-white border border-primary rounded-xl py-3 px-3">
-                  <Text className="text-primary text-xs text-center">{expirationDate ? expirationDate.toLocaleDateString() : "—"}</Text>
+                  <Text className="text-primary text-xs text-center">{expirationDate ? formatDate(expirationDate) : "—"}</Text>
                 </Pressable>
               </View>
             </View>
@@ -404,13 +460,13 @@ export default function MedicineDetailScreen() {
             {/* Dates card */}
             <Card>
               <Row label={t("start_date")}>
-                <Text className="text-base text-primary">{startDate.toLocaleDateString()}</Text>
+                <Text className="text-base text-primary">{formatDate(startDate)}</Text>
               </Row>
               <Row label={t("end_date")}>
-                <Text className="text-base text-primary">{endDate.toLocaleDateString()}</Text>
+                <Text className="text-base text-primary">{med.end_date ? formatDate(new Date(med.end_date)) : "—"}</Text>
               </Row>
               <Row label={t("expiry_date")}>
-                <Text className="text-base text-primary">{expirationDate ? expirationDate.toLocaleDateString() : "—"}</Text>
+                <Text className="text-base text-primary">{expirationDate ? formatDate(expirationDate) : "—"}</Text>
               </Row>
             </Card>
 
@@ -422,13 +478,19 @@ export default function MedicineDetailScreen() {
                 </Row>
               </Card>
             ) : null}
+
+            <Pressable
+              className="active:opacity-70 items-center justify-center bg-red-500 rounded-2xl p-4 w-full mt-2"
+              onPress={deleteMed}
+            >
+              <Text className="text-white font-bold text-base">{t("delete")}</Text>
+            </Pressable>
           </>
         )}
       </View>
 
-      <DateTimePickerModal isVisible={isTimePickerVisible} mode="time" onConfirm={handleTimeConfirm} onCancel={() => setTimePickerVisible(false)} />
+      <DateTimePickerModal isVisible={isTimePickerVisible} mode="time" date={pickerDate} onConfirm={handleTimeConfirm} onCancel={() => { setEditingTimeIndex(null); setTimePickerVisible(false); }} />
       <DateTimePickerModal isVisible={isStartPickerVisible} mode="date" onConfirm={(d) => { setStartDate(d); setStartPickerVisible(false); }} onCancel={() => setStartPickerVisible(false)} />
-      <DateTimePickerModal isVisible={isEndPickerVisible} mode="date" onConfirm={(d) => { setEndDate(d); setEndPickerVisible(false); }} onCancel={() => setEndPickerVisible(false)} />
       <DateTimePickerModal isVisible={isExpiryPickerVisible} mode="date" onConfirm={(d) => { setExpirationDate(d); setExpiryPickerVisible(false); }} onCancel={() => setExpiryPickerVisible(false)} />
     </ScrollView>
   );

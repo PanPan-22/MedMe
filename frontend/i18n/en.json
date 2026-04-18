@@ -66,5 +66,9 @@
   "type_pills": "Pills",
   "type_capsule": "Capsule",
   "type_injection": "Injection",
-  "type_other": "Other"
+  "type_other": "Other",
+  "years_old": "years old",
+  "confirm": "Confirm",
+  "delete_confirm_med": "Delete this medication?",
+  "medications": "medications"
 }

@@ -1,14 +1,18 @@
-import { saveToDB as addMedicine } from "@/components/local-db";
+import { Medication, saveToDB as addMedicine } from "@/components/local-db";
 import { useToast } from "@/context/toast-context";
+import { scheduleNotificationsForMed } from "@/hooks/use-notifications";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
 import { useTheme } from "@react-navigation/native";
-import { router, Stack } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SheetManager } from "react-native-actions-sheet";
+
+const formatDate = (d: Date) =>
+  `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`;
 
 const MEDICATION_TYPES = ["Pills", "Capsule", "Injection", "Other"];
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -26,6 +30,8 @@ export default function ManualAddScreen() {
   const { colors } = useTheme();
   const { showToast } = useToast();
   const db = useSQLiteContext();
+  const { patientId } = useLocalSearchParams<{ patientId?: string }>();
+  const pid = patientId ? parseInt(patientId) : null;
 
   const [name, setName] = useState("");
   const [medType, setMedType] = useState("Pills");
@@ -36,34 +42,55 @@ export default function ManualAddScreen() {
   const [times, setTimes] = useState<string[]>([]);
   const [selectedDays, setSelectedDays] = useState<string[]>(DAYS_OF_WEEK);
   const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
   const [expirationDate, setExpirationDate] = useState<Date | null>(null);
   const [isTimePickerVisible, setTimePickerVisible] = useState(false);
+  const [editingTimeIndex, setEditingTimeIndex] = useState<number | null>(null);
   const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
-  const [isEndDatePickerVisible, setEndDatePickerVisible] = useState(false);
   const [isExpiryPickerVisible, setExpiryPickerVisible] = useState(false);
+
+  const calcEndDate = (start: Date, stockVal: string, amountVal: string, timesCount: number): Date => {
+    const s = parseInt(stockVal) || 0;
+    const a = parseInt(amountVal) || 1;
+    const days = timesCount > 0 ? Math.floor(s / (a * timesCount)) : 0;
+    const end = new Date(start);
+    end.setDate(end.getDate() + days);
+    return end;
+  };
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = "Required";
     if (!amount.trim() || parseInt(amount) <= 0) e.amount = "Enter a valid amount";
+    if (stock.trim() && parseInt(stock) < 0) e.stock = "Cannot be negative";
+    if (selectedDays.length === 0) e.days = "Select at least one day";
     if (times.length === 0) e.times = "Add at least one time";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleTimeConfirm = (date: Date) => {
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    const newTime = `${hours}:${minutes}`;
-    if (!times.includes(newTime)) setTimes([...times, newTime].sort());
+    const h = date.getHours().toString().padStart(2, "0");
+    const m = date.getMinutes().toString().padStart(2, "0");
+    const newTime = `${h}:${m}`;
+    if (editingTimeIndex !== null) {
+      const updated = times.map((t, i) => (i === editingTimeIndex ? newTime : t));
+      setTimes([...new Set(updated)].sort());
+    } else if (!times.includes(newTime)) {
+      setTimes([...times, newTime].sort());
+    }
+    setErrors((e) => ({ ...e, times: "" }));
+    setEditingTimeIndex(null);
     setTimePickerVisible(false);
   };
 
   const removeTime = (index: number) => {
     setTimes(times.filter((_, i) => i !== index));
   };
+
+  const pickerDate = editingTimeIndex !== null
+    ? (() => { const [h, m] = times[editingTimeIndex].split(":"); const d = new Date(); d.setHours(+h, +m, 0); return d; })()
+    : new Date();
 
   const handleImagePicker = async () => {
     const result = (await SheetManager.show("image-picker-sheet")) as { uri: string } | undefined;
@@ -156,12 +183,13 @@ export default function ManualAddScreen() {
           <Text className="text-base font-semibold text-primary">{t("stock")}</Text>
           <TextInput
             value={stock}
-            onChangeText={setStock}
+            onChangeText={(v) => { setStock(v); setErrors((e) => ({ ...e, stock: "" })); }}
             keyboardType="numeric"
             placeholder="eg. 30"
             placeholderTextColor="#888888"
-            className="text-primary bg-white border border-primary rounded-2xl px-4 text-base h-12"
+            className={`text-primary bg-white border rounded-2xl px-4 text-base h-12 ${errors.stock ? "border-red-500" : "border-primary"}`}
           />
+          {errors.stock ? <Text className="text-red-500 text-xs">{errors.stock}</Text> : null}
         </View>
       </View>
 
@@ -174,11 +202,11 @@ export default function ManualAddScreen() {
             return (
               <Pressable
                 key={day}
-                onPress={() =>
-                  setSelectedDays(
-                    isSelected ? selectedDays.filter((d) => d !== day) : [...selectedDays, day]
-                  )
-                }
+                onPress={() => {
+                  const next = isSelected ? selectedDays.filter((d) => d !== day) : [...selectedDays, day];
+                  setSelectedDays(next);
+                  if (next.length > 0) setErrors((e) => ({ ...e, days: "" }));
+                }}
                 className={`w-10 h-10 rounded-full items-center justify-center ${
                   isSelected ? "bg-primary border-2 border-primary" : "bg-white border border-gray-300"
                 }`}
@@ -190,6 +218,7 @@ export default function ManualAddScreen() {
             );
           })}
         </View>
+        {errors.days ? <Text className="text-red-500 text-xs">{errors.days}</Text> : null}
       </View>
 
       {/* Schedule */}
@@ -197,16 +226,16 @@ export default function ManualAddScreen() {
         <Text className="text-base font-semibold text-primary">{t("schedule")}</Text>
         <View className="flex-row flex-wrap gap-2 items-center">
           {times.map((time, index) => (
-            <View key={time} className="flex-row items-center bg-primary/10 border border-primary rounded-full px-3 py-1.5">
+            <Pressable key={time} onPress={() => { setEditingTimeIndex(index); setTimePickerVisible(true); }} className="flex-row items-center bg-primary/10 border border-primary rounded-full px-3 py-1.5">
               <Text className="text-primary font-bold mr-2">{time}</Text>
-              <Pressable onPress={() => removeTime(index)}>
+              <Pressable onPress={(e) => { e.stopPropagation(); removeTime(index); }}>
                 <Ionicons name="close-circle" size={18} color="#ef4444" />
               </Pressable>
-            </View>
+            </Pressable>
           ))}
           <Pressable
             className="flex-row items-center bg-white border border-dashed border-primary rounded-full px-3 py-1.5"
-            onPress={() => setTimePickerVisible(true)}
+            onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
           >
             <Ionicons name="add" size={16} color={colors.primary} />
             <Text className="text-primary font-medium ml-1 text-sm">{t("add_time")}</Text>
@@ -215,25 +244,25 @@ export default function ManualAddScreen() {
         {errors.times ? <Text className="text-red-500 text-xs">{errors.times}</Text> : null}
       </View>
 
-      {/* Dates: Start | End | Expiry */}
+      {/* Dates: Start | End (auto) | Expiry */}
       <View className="flex-row gap-3 px-2 mb-4">
         <View className="flex-1 gap-1">
           <Text className="text-sm font-semibold text-primary">{t("start_date")}</Text>
           <Pressable onPress={() => setStartDatePickerVisible(true)} className="bg-white border border-primary rounded-xl h-10 justify-center">
-            <Text className="text-primary text-xs text-center">{startDate.toLocaleDateString()}</Text>
+            <Text className="text-primary text-xs text-center">{formatDate(startDate)}</Text>
           </Pressable>
         </View>
         <View className="flex-1 gap-1">
           <Text className="text-sm font-semibold text-primary">{t("end_date")}</Text>
-          <Pressable onPress={() => setEndDatePickerVisible(true)} className="bg-white border border-primary rounded-xl h-10 justify-center">
-            <Text className="text-primary text-xs text-center">{endDate.toLocaleDateString()}</Text>
-          </Pressable>
+          <View className="bg-primary/5 border border-primary/30 rounded-xl h-10 justify-center">
+            <Text className="text-primary/60 text-xs text-center">{formatDate(calcEndDate(startDate, stock, amount, times.length))}</Text>
+          </View>
         </View>
         <View className="flex-1 gap-1">
           <Text className="text-sm font-semibold text-primary">{t("expiry_date")}</Text>
           <Pressable onPress={() => setExpiryPickerVisible(true)} className="bg-white border border-primary rounded-xl h-10 justify-center">
             <Text className="text-primary text-xs text-center">
-              {expirationDate ? expirationDate.toLocaleDateString() : "—"}
+              {expirationDate ? formatDate(expirationDate) : "—"}
             </Text>
           </Pressable>
         </View>
@@ -259,7 +288,7 @@ export default function ManualAddScreen() {
           className="active:opacity-70 items-center justify-center bg-primary rounded-2xl p-4 w-full shadow-sm"
           onPress={async () => {
             if (!validate()) return;
-            const success = await addMedicine(db, {
+            const medData: Medication = {
               id: 0,
               medicine_name: name.trim(),
               type: medType,
@@ -271,9 +300,25 @@ export default function ManualAddScreen() {
               image_uri: imageUri ?? "",
               repeat_days: selectedDays.join(","),
               start_date: startDate.toISOString().split("T")[0],
-              end_date: endDate.toISOString().split("T")[0],
-            });
+              end_date: calcEndDate(startDate, stock, amount, times.length).toISOString().split("T")[0],
+              patient_id: pid,
+            };
+            const success = await addMedicine(db, medData);
             if (success) {
+              try {
+                const notifIds = await scheduleNotificationsForMed({
+                  medicineName: name.trim(),
+                  whenToTake: times.join(","),
+                  repeatDays: selectedDays.join(","),
+                  stock: parseInt(stock) || 0,
+                  count: parseInt(amount) || 1,
+                  startDate: startDate.toISOString().split("T")[0],
+                  patientId: pid,
+                });
+                await db.runAsync("UPDATE schedules SET notification_id = ? WHERE id = ?", [notifIds, medData.id]);
+              } catch (e) {
+                console.error("Failed to schedule notifications:", e);
+              }
               showToast("Medication added successfully!");
               router.back();
             } else {
@@ -285,9 +330,8 @@ export default function ManualAddScreen() {
         </Pressable>
       </View>
 
-      <DateTimePickerModal isVisible={isTimePickerVisible} mode="time" onConfirm={handleTimeConfirm} onCancel={() => setTimePickerVisible(false)} />
+      <DateTimePickerModal isVisible={isTimePickerVisible} mode="time" date={pickerDate} onConfirm={handleTimeConfirm} onCancel={() => { setEditingTimeIndex(null); setTimePickerVisible(false); }} />
       <DateTimePickerModal isVisible={isStartDatePickerVisible} mode="date" onConfirm={(d) => { setStartDate(d); setStartDatePickerVisible(false); }} onCancel={() => setStartDatePickerVisible(false)} />
-      <DateTimePickerModal isVisible={isEndDatePickerVisible} mode="date" onConfirm={(d) => { setEndDate(d); setEndDatePickerVisible(false); }} onCancel={() => setEndDatePickerVisible(false)} />
       <DateTimePickerModal isVisible={isExpiryPickerVisible} mode="date" onConfirm={(d) => { setExpirationDate(d); setExpiryPickerVisible(false); }} onCancel={() => setExpiryPickerVisible(false)} />
     </ScrollView>
   );
