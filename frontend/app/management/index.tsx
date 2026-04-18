@@ -114,7 +114,10 @@ export default function ManagementScreen() {
         <Stack.Screen options={{ headerShown: true, title: "Management" }} />
         <View className="flex-row items-center justify-between p-2 mb-2 w-full">
           <View className="flex-row items-center gap-4">
-            <Pressable onPress={() => router.back()}>
+            <Pressable
+              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+              onPress={() => router.back()}
+            >
               <Ionicons
                 name="arrow-back-outline"
                 size={24}

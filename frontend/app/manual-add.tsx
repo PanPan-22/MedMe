@@ -15,11 +15,8 @@ export default function ManaualAddScreen() {
   const { showToast } = useToast();
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  // const [time, setTime] = useState("");
   const [note, setNote] = useState("");
-  // const [meds, setMeds] = useState<Medication[]>([]);
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
-  // I need to make a list of times.
   const [times, setTimes] = useState<string[]>([]);
 
   const db = useSQLiteContext();
@@ -43,14 +40,20 @@ export default function ManaualAddScreen() {
   return (
     <ScrollView className="bg-background px-4 pt-4 h-full">
       <Stack.Screen options={{ headerShown: true, title: "Manual Add" }} />
+
       <View className="flex-row items-center justify-between p-2 mb-2 w-full">
         <View className="flex-row items-center gap-4">
-          <Pressable onPress={() => router.back()}>
+          <Pressable
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            onPress={() => router.back()}
+          >
             <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
           </Pressable>
           <Text className="text-2xl text-primary">{t("fill_field")}</Text>
         </View>
       </View>
+
+      {/* Medication Name */}
       <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
         <Text className="text-xl text-primary">{t("medication_name")}</Text>
         <TextInput
@@ -62,6 +65,7 @@ export default function ManaualAddScreen() {
           className="text-primary bg-white border border-primary rounded-2xl px-3 text-base h-12"
         />
       </View>
+
       <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
         <Text className="text-xl text-primary">{t("amount")}</Text>
         <TextInput
@@ -73,6 +77,7 @@ export default function ManaualAddScreen() {
           className="text-primary bg-white border border-primary rounded-2xl px-3 text-base h-12"
         />
       </View>
+
       <View className="gap-2 p-2 mb-2 w-full">
         <Text className="text-xl text-primary">{t("schedule")}</Text>
 
@@ -109,6 +114,7 @@ export default function ManaualAddScreen() {
           onCancel={() => setDatePickerVisibility(false)}
         />
       </View>
+
       <View className="flex-column justify-between gap-4 p-2 mb-2 w-full">
         <Text className="text-xl text-primary">{t("additional_notes")}</Text>
         <TextInput
@@ -122,6 +128,7 @@ export default function ManaualAddScreen() {
           className="text-primary align-text-top text-base h-40 bg-white border border-primary rounded-2xl px-3 web:pt-3"
         />
       </View>
+
       <View className="items-center mt-8">
         <Pressable
           className="items-center justify-center bg-primary rounded-xl p-4 w-60"

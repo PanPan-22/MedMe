@@ -1,19 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
 import * as ImagePicker from "expo-image-picker";
 // import { useSQLiteContext } from 'expo-sqlite';
+import Ionicons from "@expo/vector-icons/Ionicons";
 import * as SQLite from "expo-sqlite";
 import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
-import {
-  Button,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Button, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { SheetManager } from "react-native-actions-sheet";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Tesseract from "tesseract.js";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { Medication, saveToDB } from "./local-db";
@@ -23,8 +17,6 @@ let db: SQLiteDatabase = null;
 let loadingScan = false;
 
 enum ScanMethod {
-  OCRSpace,
-  Tesseract,
   GoogleVision,
 }
 
@@ -36,7 +28,7 @@ const medicineSchema = z
     whenToTake: z
       .string()
       .describe(
-        "When to take the medicine in HH:MM format (e.g., 08:00, 14:00)",
+        "Array of times to take the medicine in HH:MM format (e.g., 08:00, 14:00)",
       ),
     additional: z
       .string()
@@ -64,43 +56,6 @@ const TalkToGenAI = async (prompt: string) => {
     console.error("TalkToGenAI failed", error);
     return "Error communicating with AI. Please try again.";
   }
-};
-const scanText = async (uri: string) => {
-  loadingScan = true;
-  try {
-    const uriResponse = await fetch(uri);
-    const blob = await uriResponse.blob();
-    const base64 = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        resolve(result.split(",")[1]);
-      };
-      reader.readAsDataURL(blob);
-    });
-
-    const formData = new FormData();
-    formData.append("base64Image", `data:image/jpeg;base64,${base64}`);
-    formData.append("language", "eng");
-
-    const response = await fetch(`https://api.ocr.space/parse/image`, {
-      method: "POST",
-      headers: { apikey: API_KEY },
-      body: formData,
-    });
-    const data = await response.json();
-    const text = data?.ParsedResults?.[0]?.ParsedText || "No text found";
-    return text;
-  } catch (error) {
-    console.error("scanText failed", error);
-    return "Error scanning text from image. Please try again.";
-  } finally {
-    loadingScan = false;
-  }
-};
-const scanWithTesseract = async (uri: string) => {
-  const result = await Tesseract.recognize(uri, "eng");
-  return result.data.text;
 };
 
 const scanWithGoogleVision = async (uri: string) => {
@@ -191,12 +146,6 @@ const ImageInput = () => {
     try {
       let text = "";
       switch (method) {
-        case ScanMethod.OCRSpace:
-          text = await scanText(image);
-          break;
-        case ScanMethod.Tesseract:
-          text = await scanWithTesseract(image);
-          break;
         case ScanMethod.GoogleVision:
           text = await scanWithGoogleVision(image);
           break;
@@ -227,16 +176,36 @@ const ImageInput = () => {
     }
   };
 
+  const handleImagePickerSheet = () => {
+    console.log("Opening image picker sheet...");
+    SheetManager.show("image-picker-sheet");
+  };
+
   return (
     <SafeAreaView>
       {/* <Button title="Save to DB" onPress={handleSave} /> */}
-      <Text>Scan now:</Text>
-      <TouchableOpacity onPress={takePhoto}>
+      <Pressable onPress={takePhoto}>
         <Text>Take Photo</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={handleImagePickerPress}>
+      </Pressable>
+      <Pressable onPress={handleImagePickerPress}>
         <Text>Pick from Gallery</Text>
-      </TouchableOpacity>
+      </Pressable>
+      <Pressable onPress={handleImagePickerSheet}>
+        <View className="border border-gray-300 p-2 w-full items-center rounded-lg h-[25rem]">
+          {image === "" ? (
+            <View className="flex-column items-center justify-center gap-4">
+              <Ionicons name="add-circle-outline" size={32} color={"black"} />
+              <Text className="text-gray-500">No image selected</Text>
+            </View>
+          ) : (
+            <Image
+              source={{ uri: image }}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Pressable>
       {image !== "" && (
         <View style={styles.bigContainer}>
           <Image
@@ -244,23 +213,6 @@ const ImageInput = () => {
             style={{ width: 250, height: 250 }}
             resizeMode="contain"
           />
-          <View style={styles.buttonContainer}>
-            <Button
-              title="Scan!"
-              disabled={loadingScan}
-              onPress={async () => {
-                console.log("Scanning with OCRSpace...");
-                handleScan(ScanMethod.OCRSpace);
-              }}
-            />
-          </View>
-          {/* <View style={styles.buttonContainer}>
-            <Button title="Scan with Tesseract!" onPress={async () => {
-              console.log("Scanning with Tesseract...");
-              const text = await scanWithTesseract(image);
-              setScannedText(text);
-            }} />
-          </View> */}
           <View style={styles.buttonContainer}>
             <Button
               title="Scan with Google Vision!"

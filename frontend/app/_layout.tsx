@@ -1,3 +1,4 @@
+import ImageSheet from "@/components/image-picker-sheet";
 import { ToastProvider } from "@/context/toast-context";
 import { initializeDatabase } from "@/db/initialize";
 import { useSecureStorage } from "@/hooks/use-securestore";
@@ -8,9 +9,12 @@ import { StatusBar } from "expo-status-bar"; // Import from here
 import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { registerSheet, SheetProvider } from "react-native-actions-sheet";
 import { SafeAreaView } from "react-native-safe-area-context";
 import "../global.css";
 import "../i18n";
+
+registerSheet("image-picker-sheet", ImageSheet);
 
 export default function RootLayout() {
   const { colorScheme, setColorScheme } = useColorScheme();
@@ -46,37 +50,38 @@ export default function RootLayout() {
     // Explicitly check for 'dark' and provide 'light' as fallback class
     <View className={`flex-1 ${colorScheme === "dark" ? "dark" : "light"}`}>
       <StatusBar style={colorScheme === "dark" ? "dark" : "light"} />
-
-      <ToastProvider>
-        <SQLiteProvider
-          databaseName="myDatabase.db"
-          onInit={initializeDatabase}
-        >
-          <Stack
-            screenOptions={{
-              header: () => (
-                <SafeAreaView
-                  className={`flex-row w-full h-24 items-center justify-between p-4 bg-primary`}
-                >
-                  <Text
-                    className="text-white text-xl truncate w-1/2"
-                    numberOfLines={1}
+      <SheetProvider>
+        <ToastProvider>
+          <SQLiteProvider
+            databaseName="myDatabase.db"
+            onInit={initializeDatabase}
+          >
+            <Stack
+              screenOptions={{
+                header: () => (
+                  <SafeAreaView
+                    className={`flex-row w-full h-24 items-center justify-between p-4 bg-primary`}
                   >
-                    ชัยพร ศรเกษม
-                  </Text>
-                  <Link href="/settings" push asChild>
-                    <Pressable>
-                      <Feather name="settings" size={24} color="white" />
-                    </Pressable>
-                  </Link>
-                </SafeAreaView>
-              ),
-              headerShown: true,
-              // Add this to ensure the "under-layer" matches the theme
-            }}
-          />
-        </SQLiteProvider>
-      </ToastProvider>
+                    <Text
+                      className="text-white text-xl truncate w-1/2"
+                      numberOfLines={1}
+                    >
+                      ชัยพร ศรเกษม
+                    </Text>
+                    <Link href="/settings" push asChild>
+                      <Pressable>
+                        <Feather name="settings" size={24} color="white" />
+                      </Pressable>
+                    </Link>
+                  </SafeAreaView>
+                ),
+                headerShown: true,
+                // Add this to ensure the "under-layer" matches the theme
+              }}
+            />
+          </SQLiteProvider>
+        </ToastProvider>
+      </SheetProvider>
     </View>
   );
 }
