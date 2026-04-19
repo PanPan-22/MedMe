@@ -13,7 +13,7 @@ interface ScheduleRow {
 }
 
 interface LogRow {
-  id: number; sync_id: string | null; medication_id: number; scheduled_time: string;
+  id: number; sync_id: string | null; schedule_id: number; scheduled_time: string;
   log_date: string; timestamp: string; status: string; patient_id: number | null;
   updated_at: string | null; value: string | null;
 }
@@ -26,7 +26,7 @@ interface PatientRow {
 export interface Snapshot {
   version: number;
   schedules: ScheduleRow[];
-  medication_logs: LogRow[];
+  logs: LogRow[];
   patients: PatientRow[];
 }
 
@@ -34,13 +34,13 @@ const SNAPSHOT_VERSION = 1;
 
 export async function writeSnapshot(clerkId: string, db: SQLite.SQLiteDatabase) {
   const schedules = await db.getAllAsync<ScheduleRow>(`SELECT * FROM schedules`);
-  const medication_logs = await db.getAllAsync<LogRow>(`SELECT * FROM medication_logs`);
+  const logs = await db.getAllAsync<LogRow>(`SELECT * FROM logs`);
   const patients = await db.getAllAsync<PatientRow>(`SELECT * FROM patients`);
 
   const snapshot: Snapshot = {
     version: SNAPSHOT_VERSION,
     schedules,
-    medication_logs,
+    logs,
     patients,
   };
 
@@ -58,7 +58,7 @@ export async function readSnapshot(clerkId: string): Promise<Snapshot | null> {
   return {
     version: data.version,
     schedules: data.schedules ?? [],
-    medication_logs: data.medication_logs ?? [],
+    logs: data.logs ?? [],
     patients: data.patients ?? [],
   };
 }
@@ -85,12 +85,12 @@ export async function restoreSnapshot(db: SQLite.SQLiteDatabase, snapshot: Snaps
         ],
       );
     }
-    for (const l of snapshot.medication_logs) {
+    for (const l of snapshot.logs) {
       await db.runAsync(
-        `INSERT OR REPLACE INTO medication_logs
-          (id, sync_id, medication_id, scheduled_time, log_date, timestamp, status, patient_id, updated_at, value)
+        `INSERT OR REPLACE INTO logs
+          (id, sync_id, schedule_id, scheduled_time, log_date, timestamp, status, patient_id, updated_at, value)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [l.id, l.sync_id, l.medication_id, l.scheduled_time, l.log_date, l.timestamp, l.status, l.patient_id, l.updated_at, l.value],
+        [l.id, l.sync_id, l.schedule_id, l.scheduled_time, l.log_date, l.timestamp, l.status, l.patient_id, l.updated_at, l.value],
       );
     }
   });
@@ -100,7 +100,7 @@ export async function isLocalDbEmpty(db: SQLite.SQLiteDatabase): Promise<boolean
   const row = await db.getFirstAsync<{ c: number }>(
     `SELECT
        (SELECT COUNT(*) FROM schedules) +
-       (SELECT COUNT(*) FROM medication_logs) +
+       (SELECT COUNT(*) FROM logs) +
        (SELECT COUNT(*) FROM patients) AS c`,
   );
   return (row?.c ?? 0) === 0;

@@ -1,12 +1,14 @@
 import { useToast } from "@/context/toast-context";
 import { readUserProfile, redeemPairingCode, removePatientLink } from "@/db/firestore-ops";
 import { cancelNotificationsForMed } from "@/hooks/use-notifications";
+import { useSecureStorage } from "@/hooks/use-securestore";
+import { PatientSortMode } from "@/lib/med-sort";
 import { Feather } from "@expo/vector-icons";
 import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FlatList,
@@ -30,6 +32,12 @@ const THEME_COLORS = {
 
 type Mode = "view" | "edit";
 
+const SORT_KEY = "sort_patients";
+const PATIENT_SORT_OPTIONS: { value: PatientSortMode; key: string }[] = [
+  { value: "default", key: "sort_default" },
+  { value: "alphabetical", key: "sort_alphabetical" },
+];
+
 export default function PatientListScreen() {
   const db = useSQLiteContext();
   const { colorScheme } = useColorScheme();
@@ -50,6 +58,26 @@ export default function PatientListScreen() {
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [sortMode, setSortMode] = useState<PatientSortMode>("default");
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const { save, getValue } = useSecureStorage();
+
+  useEffect(() => {
+    getValue(SORT_KEY).then((v) => {
+      if (v === "default" || v === "alphabetical") setSortMode(v);
+    });
+  }, []);
+
+  const onPickSort = (m: PatientSortMode) => {
+    setSortMode(m);
+    save(SORT_KEY, m);
+    setShowSortMenu(false);
+  };
+
+  const sortedResults = useMemo(() => {
+    if (sortMode === "default") return results;
+    return [...results].sort((a, b) => a.name.localeCompare(b.name));
+  }, [results, sortMode]);
 
   useFocusEffect(useCallback(() => { fetchPatients(); }, []));
 
@@ -132,7 +160,7 @@ export default function PatientListScreen() {
           }
         }
         await db.runAsync("DELETE FROM schedules WHERE patient_id = ?", [id]);
-        await db.runAsync("DELETE FROM medication_logs WHERE patient_id = ?", [id]);
+        await db.runAsync("DELETE FROM logs WHERE patient_id = ?", [id]);
         await db.runAsync("DELETE FROM patients WHERE id = ?", [id]);
       }
       showToast(t("patients_deleted"));
@@ -173,13 +201,16 @@ export default function PatientListScreen() {
             placeholderTextColor="#888888"
             className="px-1 py-2 flex-1 text-primary text-lg"
           />
+          <Pressable hitSlop={10} onPress={() => setShowSortMenu(true)}>
+            <Ionicons name="swap-vertical" size={22} color={theme.primary} />
+          </Pressable>
         </View>
       </View>
 
       <FlatList
         style={{ flex: 1, paddingHorizontal: 16 }}
         extraData={{ mode, selectedIds }}
-        data={results}
+        data={sortedResults}
         keyExtractor={(item) => item.id.toString()}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -191,14 +222,14 @@ export default function PatientListScreen() {
                 ? toggleSelect(item.id)
                 : router.push({ pathname: "/caretaker/patients/[id]", params: { id: item.id, patientName: item.name } })
             }
-            className="active:opacity-70 p-2 border-b border-muted flex-row items-center justify-between"
+            className="active:opacity-70 px-2 py-3 border-b border-muted flex-row items-center justify-between"
           >
-            <View className="flex-row items-center gap-3 flex-1">
+            <View className="flex-row items-center gap-4 flex-1">
               {item.image_uri ? (
-                <Image source={{ uri: item.image_uri }} className="w-12 h-12 rounded-full" resizeMode="cover" />
+                <Image source={{ uri: item.image_uri }} className="w-16 h-16 rounded-full" resizeMode="cover" />
               ) : (
-                <View className="w-12 h-12 rounded-full bg-primary/10 items-center justify-center">
-                  <Text className="text-primary font-bold text-lg">{item.name.charAt(0)}</Text>
+                <View className="w-16 h-16 rounded-full bg-primary/10 items-center justify-center">
+                  <Text className="text-primary font-bold text-2xl">{item.name.charAt(0)}</Text>
                 </View>
               )}
               <Text className="text-xl text-primary flex-1" numberOfLines={1}>{item.name}</Text>
@@ -225,6 +256,28 @@ export default function PatientListScreen() {
           </Pressable>
         </View>
       )}
+
+      {/* Sort Modal */}
+      <Modal visible={showSortMenu} transparent animationType="fade" onRequestClose={() => setShowSortMenu(false)}>
+        <Pressable className="flex-1 bg-black/60 justify-center items-center px-6" onPress={() => setShowSortMenu(false)}>
+          <Pressable className="bg-background rounded-3xl p-6 w-full gap-3" onPress={() => {}}>
+            <Text className="text-xl font-bold text-primary mb-2">{t("sort")}</Text>
+            {PATIENT_SORT_OPTIONS.map(({ value, key }) => {
+              const selected = sortMode === value;
+              return (
+                <Pressable
+                  key={value}
+                  className={`active:opacity-70 flex-row items-center justify-between rounded-2xl p-4 w-full border-2 ${selected ? "bg-primary border-primary" : "bg-card border-muted"}`}
+                  onPress={() => onPickSort(value)}
+                >
+                  <Text className={`text-base font-bold ${selected ? "text-background" : "text-primary"}`}>{t(key)}</Text>
+                  {selected && <Ionicons name="checkmark" size={20} color={theme.background} />}
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Action Modal */}
       <Modal visible={showActionModal} transparent animationType="fade" onRequestClose={() => setShowActionModal(false)}>

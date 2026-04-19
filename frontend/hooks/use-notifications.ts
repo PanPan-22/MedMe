@@ -30,15 +30,6 @@ export interface ScheduleParams {
   patientId?: number | null;
 }
 
-export function calcEndDate(params: { stock: number; count: number; timesPerDay: number; startDate?: string }): Date {
-  const { stock, count, timesPerDay, startDate } = params;
-  const days = count > 0 && timesPerDay > 0 ? Math.floor(stock / (count * timesPerDay)) : 0;
-  const base = startDate ? new Date(startDate + "T00:00:00") : new Date();
-  const end = new Date(base);
-  end.setDate(end.getDate() + days);
-  return end;
-}
-
 export async function scheduleNotificationsForMed(params: ScheduleParams): Promise<string> {
   const { medicineName, whenToTake, repeatDays, stock, count, startDate, patientId } = params;
 

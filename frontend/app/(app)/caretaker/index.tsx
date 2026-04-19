@@ -1,5 +1,6 @@
-import { Medication } from "@/components/local-db";
+import { Schedule } from "@/components/local-db";
 import { useBrandColor } from "@/hooks/use-brand-color";
+import { getNextAlarm, slotDayLabelKey } from "@/lib/med-sort";
 import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
@@ -14,21 +15,6 @@ interface Patient { id: number; name: string; image_uri?: string; medsAtAlarm: A
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-function getNextAlarm(meds: Medication[]): { time: string } | null {
-  const today = DAY_NAMES[new Date().getDay()];
-  const now = new Date();
-  const current = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-  const times: string[] = [];
-  for (const med of meds) {
-    if (!med.repeat_days?.includes(today)) continue;
-    for (const t of (med.whenToTake ?? "").split(",").filter(Boolean)) {
-      if (t > current) times.push(t);
-    }
-  }
-  if (!times.length) return null;
-  return { time: times.sort()[0] };
-}
-
 export default function CaretakerHome() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -42,23 +28,25 @@ export default function CaretakerHome() {
   if (role && role !== "caretaker") return <Redirect href="/patient" />;
 
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [nextAlarm, setNextAlarm] = useState<{ time: string } | null>(null);
+  const [nextAlarm, setNextAlarm] = useState<{ time: string; dayOffset: number } | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
   useFocusEffect(useCallback(() => { fetchData(); }, []));
 
   const fetchData = async () => {
     const pts = await db.getAllAsync<{ id: number; name: string; image_uri?: string }>("SELECT * FROM patients");
-    const allMeds = await db.getAllAsync<Medication>("SELECT * FROM schedules WHERE patient_id IS NOT NULL");
+    const allMeds = await db.getAllAsync<Schedule>("SELECT * FROM schedules WHERE patient_id IS NOT NULL");
     const alarm = getNextAlarm(allMeds);
     setNextAlarm(alarm);
 
-    const today = DAY_NAMES[new Date().getDay()];
+    const alarmDayName = alarm
+      ? DAY_NAMES[(new Date().getDay() + alarm.dayOffset) % 7]
+      : null;
     const enriched: Patient[] = pts.map(p => {
-      const medsAtAlarm = alarm
+      const medsAtAlarm = alarm && alarmDayName
         ? allMeds.filter(m =>
             m.patient_id === p.id &&
-            m.repeat_days?.includes(today) &&
+            m.repeat_days?.includes(alarmDayName) &&
             (m.whenToTake ?? "").split(",").map(s => s.trim()).includes(alarm.time)
           ).map(m => ({ medicine_name: m.medicine_name, count: m.count, type: m.type, image_uri: m.image_uri }))
         : [];
@@ -77,14 +65,23 @@ export default function CaretakerHome() {
           <>
             {/* Upcoming alarm */}
             <View className="flex-row items-center justify-between mb-5">
-              <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>{t("next_med")}</Text>
+              <Text
+                className="text-2xl font-bold text-primary flex-1 mr-2"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
+                {t("next_med")}
+              </Text>
               {nextAlarm ? (() => {
                 const hour = parseInt(nextAlarm.time.split(":")[0]);
                 const isNight = hour < 6 || hour >= 18;
+                const dayKey = slotDayLabelKey(nextAlarm.dayOffset);
                 return (
-                  <View className="flex-row items-center gap-2 bg-yellow-100 rounded-full px-4 py-1.5 border border-yellow-300">
+                  <View className={`flex-row items-center gap-2 rounded-full px-4 py-1.5 border ${isNight ? "bg-blue-100 border-blue-300" : "bg-yellow-100 border-yellow-300"}`}>
+                    {dayKey && <Text className="text-black font-semibold text-sm">{t(dayKey)}</Text>}
                     <Ionicons name={isNight ? "moon" : "sunny"} size={20} color={isNight ? "#3b82f6" : "#f59e0b"} />
-                    <Text className="text-primary font-bold text-2xl">{nextAlarm.time}</Text>
+                    <Text className="text-black font-bold text-2xl">{nextAlarm.time}</Text>
                   </View>
                 );
               })() : (
@@ -109,15 +106,15 @@ export default function CaretakerHome() {
                     <View style={{ width: cardWidth }} className="bg-card border border-primary/20 rounded-2xl overflow-hidden">
                       {/* Patient header */}
                       <View className="flex-row items-center justify-between px-4 py-4">
-                        <View className="flex-row items-center gap-3 flex-1">
+                        <View className="flex-row items-center gap-4 flex-1">
                           {item.image_uri ? (
-                            <Image source={{ uri: item.image_uri }} className="w-12 h-12 rounded-full" resizeMode="cover" />
+                            <Image source={{ uri: item.image_uri }} className="w-16 h-16 rounded-full" resizeMode="cover" />
                           ) : (
-                            <View className="w-12 h-12 rounded-full bg-primary/10 items-center justify-center">
-                              <Text className="text-primary font-bold text-lg">{item.name.charAt(0)}</Text>
+                            <View className="w-16 h-16 rounded-full bg-primary/10 items-center justify-center">
+                              <Text className="text-primary font-bold text-2xl">{item.name.charAt(0)}</Text>
                             </View>
                           )}
-                          <Text className="text-base font-bold text-primary flex-1" numberOfLines={1}>{item.name}</Text>
+                          <Text className="text-lg font-bold text-primary flex-1" numberOfLines={1}>{item.name}</Text>
                         </View>
                         <Pressable
                           className="active:opacity-70 p-1"

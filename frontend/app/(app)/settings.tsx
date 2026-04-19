@@ -127,7 +127,7 @@ export default function SettingsScreen() {
 
       await db.execAsync(`
         DELETE FROM schedules;
-        DELETE FROM medication_logs;
+        DELETE FROM logs;
         DELETE FROM patients;
         DELETE FROM patient_links;
         DELETE FROM outbox;

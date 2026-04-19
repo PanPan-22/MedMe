@@ -1,5 +1,5 @@
 import { ConfirmModal } from "@/components/confirm-modal";
-import { Medication } from "@/components/local-db";
+import { Schedule } from "@/components/local-db";
 import { useToast } from "@/context/toast-context";
 import { deleteScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
 import { useBrandColor } from "@/hooks/use-brand-color";
@@ -57,7 +57,7 @@ export default function MedicineDetailScreen() {
   const { t } = useTranslation();
   const { showToast } = useToast();
 
-  const [med, setMed] = useState<Medication | null>(null);
+  const [med, setMed] = useState<Schedule | null>(null);
   const [editing, setEditing] = useState(false);
 
   const [name, setName] = useState("");
@@ -90,14 +90,14 @@ export default function MedicineDetailScreen() {
 
   const fetchMedication = async () => {
     try {
-      const result = await db.getFirstAsync<Medication>(
+      const result = await db.getFirstAsync<Schedule>(
         "SELECT * FROM schedules WHERE id = ?", [id.toString()],
       );
       if (result) { setMed(result); populateFields(result); }
     } catch (e) { console.error(e); }
   };
 
-  const populateFields = (m: Medication) => {
+  const populateFields = (m: Schedule) => {
     setName(m.medicine_name);
     setMedType(m.type || "Pills");
     setAmount(m.count?.toString() ?? "");

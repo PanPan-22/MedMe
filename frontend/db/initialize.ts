@@ -35,11 +35,16 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
       );
     `);
 
+    // Idempotent rename migrations — run before creating the logs table so fresh
+    // installs skip silently, and existing installs upgrade in place.
+    try { await db.execAsync(`ALTER TABLE medication_logs RENAME TO logs`); } catch { /* already renamed or fresh install */ }
+    try { await db.execAsync(`ALTER TABLE logs RENAME COLUMN medication_id TO schedule_id`); } catch { /* already renamed */ }
+
     await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS medication_logs (
+      CREATE TABLE IF NOT EXISTS logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sync_id TEXT UNIQUE,
-        medication_id INTEGER NOT NULL,
+        schedule_id INTEGER NOT NULL,
         scheduled_time TEXT NOT NULL,
         log_date TEXT NOT NULL,
         timestamp TEXT NOT NULL,
@@ -97,10 +102,10 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
       `ALTER TABLE schedules ADD COLUMN start_date TEXT`,
       `ALTER TABLE schedules ADD COLUMN end_date TEXT`,
       `ALTER TABLE schedules ADD COLUMN kind TEXT DEFAULT 'medication'`,
-      `ALTER TABLE medication_logs ADD COLUMN sync_id TEXT`,
-      `ALTER TABLE medication_logs ADD COLUMN updated_at TEXT`,
-      `ALTER TABLE medication_logs ADD COLUMN patient_id INTEGER`,
-      `ALTER TABLE medication_logs ADD COLUMN value TEXT`,
+      `ALTER TABLE logs ADD COLUMN sync_id TEXT`,
+      `ALTER TABLE logs ADD COLUMN updated_at TEXT`,
+      `ALTER TABLE logs ADD COLUMN patient_id INTEGER`,
+      `ALTER TABLE logs ADD COLUMN value TEXT`,
     ];
     for (const sql of migrations) {
       try { await db.execAsync(sql); } catch { /* already exists */ }
@@ -108,7 +113,7 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
 
     const dedup = [
       `DELETE FROM schedules WHERE sync_id IS NOT NULL AND id NOT IN (SELECT MIN(id) FROM schedules WHERE sync_id IS NOT NULL GROUP BY sync_id)`,
-      `DELETE FROM medication_logs WHERE sync_id IS NOT NULL AND id NOT IN (SELECT MIN(id) FROM medication_logs WHERE sync_id IS NOT NULL GROUP BY sync_id)`,
+      `DELETE FROM logs WHERE sync_id IS NOT NULL AND id NOT IN (SELECT MIN(id) FROM logs WHERE sync_id IS NOT NULL GROUP BY sync_id)`,
       `DELETE FROM patients WHERE clerk_user_id IS NOT NULL AND id NOT IN (SELECT MIN(id) FROM patients WHERE clerk_user_id IS NOT NULL GROUP BY clerk_user_id)`,
     ];
     for (const sql of dedup) {
@@ -118,6 +123,8 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
     const dropOldIndexes = [
       `DROP INDEX IF EXISTS idx_schedules_sync_id`,
       `DROP INDEX IF EXISTS idx_medication_logs_sync_id`,
+      `DROP INDEX IF EXISTS idx_medication_logs_medication_id`,
+      `DROP INDEX IF EXISTS idx_medication_logs_patient_log_date`,
       `DROP INDEX IF EXISTS idx_patients_clerk_user_id`,
     ];
     for (const sql of dropOldIndexes) {
@@ -126,8 +133,11 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
 
     const indexes = [
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_schedules_sync_id ON schedules(sync_id)`,
-      `CREATE UNIQUE INDEX IF NOT EXISTS idx_medication_logs_sync_id ON medication_logs(sync_id)`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_sync_id ON logs(sync_id)`,
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_clerk_user_id ON patients(clerk_user_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_schedules_patient_id ON schedules(patient_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_logs_schedule_id ON logs(schedule_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_logs_patient_log_date ON logs(patient_id, log_date)`,
     ];
     for (const sql of indexes) {
       try { await db.execAsync(sql); } catch (e) { console.warn("index failed", e); }

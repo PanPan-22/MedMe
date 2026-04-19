@@ -1,6 +1,7 @@
-import { Medication } from "@/components/local-db";
+import { Schedule } from "@/components/local-db";
 import { useBrandColor } from "@/hooks/use-brand-color";
 import { useSecureStorage } from "@/hooks/use-securestore";
+import { getUpcomingSlots, slotDayLabelKey, UpcomingSlot } from "@/lib/med-sort";
 import { useUser } from "@clerk/expo";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -17,32 +18,6 @@ import {
   View,
 } from "react-native";
 
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-interface TimeSlot {
-  time: string;
-  meds: Medication[];
-}
-
-function getUpcomingSlots(meds: Medication[], limit = 5): TimeSlot[] {
-  const today = DAY_NAMES[new Date().getDay()];
-  const now = new Date();
-  const current = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-  const map = new Map<string, Medication[]>();
-  for (const med of meds) {
-    if (!med.repeat_days?.includes(today)) continue;
-    for (const t of (med.whenToTake ?? "").split(",").filter(Boolean)) {
-      if (t > current) {
-        if (!map.has(t)) map.set(t, []);
-        map.get(t)!.push(med);
-      }
-    }
-  }
-  return Array.from(map.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(0, limit)
-    .map(([time, meds]) => ({ time, meds }));
-}
 
 export default function PatientHome() {
   const { t } = useTranslation();
@@ -55,7 +30,7 @@ export default function PatientHome() {
   const role = (user?.unsafeMetadata as any)?.role;
   if (role && role !== "patient") return <Redirect href="/caretaker" />;
 
-  const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const [slots, setSlots] = useState<UpcomingSlot[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [simpleUi, setSimpleUi] = useState(false);
   const { getValue } = useSecureStorage();
@@ -68,7 +43,7 @@ export default function PatientHome() {
   );
 
   const fetchData = async () => {
-    const meds = await db.getAllAsync<Medication>(
+    const meds = await db.getAllAsync<Schedule>(
       "SELECT * FROM schedules WHERE patient_id IS NULL",
     );
     setSlots(getUpcomingSlots(meds));
@@ -86,8 +61,10 @@ export default function PatientHome() {
             {/* Next medication header with yellow time pill */}
             <View className="flex-row items-center justify-between mb-5">
               <Text
-                className="text-2xl font-bold text-primary flex-1"
+                className="text-2xl font-bold text-primary flex-1 mr-2"
                 numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
               >
                 {t("next_med")}
               </Text>
@@ -95,14 +72,18 @@ export default function PatientHome() {
                 (() => {
                   const hour = parseInt(slots[0].time.split(":")[0]);
                   const isNight = hour < 6 || hour >= 18;
+                  const dayKey = slotDayLabelKey(slots[0].dayOffset);
                   return (
-                    <View className="flex-row items-center gap-2 bg-yellow-100 rounded-full px-4 py-1.5 border border-yellow-300">
+                    <View className={`flex-row items-center gap-2 rounded-full px-4 py-1.5 border ${isNight ? "bg-blue-100 border-blue-300" : "bg-yellow-100 border-yellow-300"}`}>
+                      {dayKey && (
+                        <Text className="text-black font-semibold text-sm">{t(dayKey)}</Text>
+                      )}
                       <Ionicons
                         name={isNight ? "moon" : "sunny"}
                         size={20}
                         color={isNight ? "#3b82f6" : "#f59e0b"}
                       />
-                      <Text className="text-primary font-bold text-2xl">
+                      <Text className="text-black font-bold text-2xl">
                         {slots[0].time}
                       </Text>
                     </View>
@@ -121,7 +102,7 @@ export default function PatientHome() {
                   pagingEnabled
                   showsHorizontalScrollIndicator={false}
                   data={slots}
-                  keyExtractor={(item) => item.time}
+                  keyExtractor={(item) => `${item.dayOffset}-${item.time}`}
                   onMomentumScrollEnd={(e) => {
                     setActiveIndex(
                       Math.round(e.nativeEvent.contentOffset.x / cardWidth),
@@ -130,6 +111,7 @@ export default function PatientHome() {
                   renderItem={({ item }) => {
                     const hour = parseInt(item.time.split(":")[0]);
                     const isNight = hour < 6 || hour >= 18;
+                    const dayKey = slotDayLabelKey(item.dayOffset);
                     return (
                       <View
                         style={{ width: cardWidth }}
@@ -137,13 +119,16 @@ export default function PatientHome() {
                       >
                         {/* Time pill on dark green header */}
                         <View className="bg-primary py-4 items-center">
-                          <View className="flex-row items-center gap-2 bg-yellow-100 rounded-full px-4 py-1 border border-yellow-300">
+                          <View className={`flex-row items-center gap-2 rounded-full px-4 py-1 border ${isNight ? "bg-blue-100 border-blue-300" : "bg-yellow-100 border-yellow-300"}`}>
+                            {dayKey && (
+                              <Text className="text-black font-semibold text-sm">{t(dayKey)}</Text>
+                            )}
                             <Ionicons
                               name={isNight ? "moon" : "sunny"}
                               size={20}
                               color={isNight ? "#3b82f6" : "#f59e0b"}
                             />
-                            <Text className="text-primary font-bold text-2xl">
+                            <Text className="text-black font-bold text-2xl">
                               {item.time}
                             </Text>
                           </View>
