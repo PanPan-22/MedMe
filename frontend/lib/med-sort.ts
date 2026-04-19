@@ -3,6 +3,22 @@ import type { Schedule } from "@/components/local-db";
 export type MedSortMode = "default" | "alphabetical" | "next_time";
 export type PatientSortMode = "default" | "alphabetical";
 
+export const LOW_STOCK_THRESHOLD_DAYS = 7;
+
+export function daysLeftForMed(med: Schedule): number | null {
+  const count = med.count ?? 1;
+  const times = (med.whenToTake ?? "").split(",").filter(Boolean).length;
+  const stock = med.stock ?? 0;
+  if (count <= 0 || times <= 0) return null;
+  return Math.floor(stock / (count * times));
+}
+
+export function isLowStock(med: Schedule): boolean {
+  if (med.kind && med.kind !== "medication") return false;
+  const days = daysLeftForMed(med);
+  return days !== null && days <= LOW_STOCK_THRESHOLD_DAYS;
+}
+
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export interface UpcomingSlot {

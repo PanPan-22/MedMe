@@ -15,6 +15,7 @@ import {
   FlatList,
   Image,
   Pressable,
+  RefreshControl,
   Text,
   useWindowDimensions,
   View,
@@ -34,19 +35,33 @@ export default function PatientDetailScreen() {
   const [slots, setSlots] = useState<UpcomingSlot[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [patientImage, setPatientImage] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    const meds = await db.getAllAsync<Schedule>(
+      "SELECT * FROM schedules WHERE patient_id = ?",
+      [parseInt(id)],
+    );
+    setSlots(getUpcomingSlots(meds));
+    const row = await db.getFirstAsync<{ image_uri: string | null }>(
+      "SELECT image_uri FROM patients WHERE id = ?",
+      [parseInt(id)],
+    );
+    setPatientImage(row?.image_uri ?? null);
+  }, [id, db]);
 
   useFocusEffect(
     useCallback(() => {
-      db.getAllAsync<Schedule>(
-        "SELECT * FROM schedules WHERE patient_id = ?",
-        [parseInt(id)],
-      ).then((meds) => setSlots(getUpcomingSlots(meds)));
-      db.getFirstAsync<{ image_uri: string | null }>(
-        "SELECT image_uri FROM patients WHERE id = ?",
-        [parseInt(id)],
-      ).then((row) => setPatientImage(row?.image_uri ?? null));
+      fetchData();
+      const intervalId = setInterval(fetchData, 10_000);
+      return () => clearInterval(intervalId);
     }, [id]),
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await fetchData(); } finally { setRefreshing(false); }
+  }, [fetchData]);
 
   return (
     <View className="flex-1 bg-background">
@@ -58,6 +73,13 @@ export default function PatientDetailScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         data={[]}
         renderItem={null}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={brandColor}
+          />
+        }
         ListHeaderComponent={
           <>
             {/* Patient info */}
@@ -65,7 +87,7 @@ export default function PatientDetailScreen() {
               <Pressable
                 hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                 onPress={() => router.back()}
-                className="self-start mb-2"
+                className="active:opacity-70 self-start mb-2"
               >
                 <Ionicons
                   name="arrow-back-outline"
@@ -141,7 +163,7 @@ export default function PatientDetailScreen() {
                                 <View className="flex-1 mr-3">
                                   <Text className="text-primary font-bold text-base" numberOfLines={1}>{med.medicine_name}</Text>
                                   {kind === "medication" && (
-                                    <Text className="text-primary/60 text-xs">{t("amount")}: {med.count} {med.type}</Text>
+                                    <Text className="text-primary/60 text-xs">{t("amount")}: {med.count} {t(`type_${med.type?.toLowerCase()}`, { defaultValue: med.type })}</Text>
                                   )}
                                 </View>
                                 {kind === "medication" ? (
@@ -181,8 +203,11 @@ export default function PatientDetailScreen() {
                 )}
               </View>
             ) : (
-              <View className="bg-primary/10 rounded-2xl p-6 mb-6 items-center">
-                <Text className="text-primary/50">{t("no_medications")}</Text>
+              <View className="items-center justify-center py-10 gap-3 mb-6 bg-card border border-primary/20 rounded-2xl">
+                <View className="w-20 h-20 rounded-full bg-primary/10 items-center justify-center">
+                  <Ionicons name="medical-outline" size={40} color={brandColor} />
+                </View>
+                <Text className="text-primary/60 text-base text-center">{t("no_medications")}</Text>
               </View>
             )}
           </>

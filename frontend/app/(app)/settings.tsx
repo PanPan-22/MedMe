@@ -49,15 +49,22 @@ export default function SettingsScreen() {
   const [isDeleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [simpleUi, setSimpleUi] = useState(false);
+  const [debugNotifications, setDebugNotifications] = useState(false);
 
   const { getValue } = useSecureStorage();
   useEffect(() => {
     getValue("simpleUi").then((v) => setSimpleUi(v === "true"));
+    getValue("debugNotifications").then((v) => setDebugNotifications(v === "true"));
   }, []);
 
   const toggleSimpleUi = async (val: boolean) => {
     setSimpleUi(val);
     await save("simpleUi", val ? "true" : "false");
+  };
+
+  const toggleDebugNotifications = async (val: boolean) => {
+    setDebugNotifications(val);
+    await save("debugNotifications", val ? "true" : "false");
   };
 
   useEffect(() => {
@@ -156,7 +163,7 @@ export default function SettingsScreen() {
       <Stack.Screen options={{ headerShown: true, title: t("settings") }} />
 
       <View className="flex-row items-center gap-4 p-2 mb-4">
-        <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+        <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
           <Ionicons name="arrow-back-outline" size={24} color={primaryColor} />
         </Pressable>
         <Text className="text-2xl font-bold text-primary">{t("settings")}</Text>
@@ -237,7 +244,7 @@ export default function SettingsScreen() {
             <View className="flex-row gap-4">
               <Pressable
                 onPress={() => toggleSimpleUi(false)}
-                className={`flex-1 items-center justify-center p-4 rounded-xl border ${
+                className={`active:opacity-70 flex-1 items-center justify-center p-4 rounded-xl border ${
                   !simpleUi ? selectedCls : unselectedCls
                 }`}
               >
@@ -247,7 +254,7 @@ export default function SettingsScreen() {
               </Pressable>
               <Pressable
                 onPress={() => toggleSimpleUi(true)}
-                className={`flex-1 items-center justify-center p-4 rounded-xl border ${
+                className={`active:opacity-70 flex-1 items-center justify-center p-4 rounded-xl border ${
                   simpleUi ? selectedCls : unselectedCls
                 }`}
               >
@@ -274,7 +281,7 @@ export default function SettingsScreen() {
         <View className="flex-row gap-4">
           <Pressable
             onPress={() => toggleTheme("light")}
-            className={`flex-1 flex-row items-center justify-center gap-2 p-4 rounded-xl border ${
+            className={`active:opacity-70 flex-1 flex-row items-center justify-center gap-2 p-4 rounded-xl border ${
               colorScheme === "light" ? selectedCls : unselectedCls
             }`}
           >
@@ -286,7 +293,7 @@ export default function SettingsScreen() {
 
           <Pressable
             onPress={() => toggleTheme("dark")}
-            className={`flex-1 flex-row items-center justify-center gap-2 p-4 rounded-xl border ${
+            className={`active:opacity-70 flex-1 flex-row items-center justify-center gap-2 p-4 rounded-xl border ${
               colorScheme === "dark" ? selectedCls : unselectedCls
             }`}
           >
@@ -306,7 +313,7 @@ export default function SettingsScreen() {
         <View className="flex-row gap-4">
           <Pressable
             onPress={() => i18n.changeLanguage("en")}
-            className={`flex-1 flex-row items-center justify-center gap-2 p-4 rounded-xl border ${
+            className={`active:opacity-70 flex-1 flex-row items-center justify-center gap-2 p-4 rounded-xl border ${
               currentLanguage === "en" ? selectedCls : unselectedCls
             }`}
           >
@@ -317,12 +324,42 @@ export default function SettingsScreen() {
 
           <Pressable
             onPress={() => i18n.changeLanguage("th")}
-            className={`flex-1 flex-row items-center justify-center gap-2 p-4 rounded-xl border ${
+            className={`active:opacity-70 flex-1 flex-row items-center justify-center gap-2 p-4 rounded-xl border ${
               currentLanguage === "th" ? selectedCls : unselectedCls
             }`}
           >
             <Text className={currentLanguage === "th" ? "text-background font-bold" : "text-primary"}>
               🇹🇭 ไทย
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <View className="border-b border-muted" />
+
+      {/* Notification Debug Toggle */}
+      <View className="px-2 py-4">
+        <Text className="text-primary font-semibold mb-2 text-xl">{t("debug_notifications_toggle")}</Text>
+        <Text className="text-primary/60 text-sm mb-4">{t("debug_notifications_toggle_desc")}</Text>
+        <View className="flex-row gap-4">
+          <Pressable
+            onPress={() => toggleDebugNotifications(false)}
+            className={`active:opacity-70 flex-1 items-center justify-center p-4 rounded-xl border ${
+              !debugNotifications ? selectedCls : unselectedCls
+            }`}
+          >
+            <Text className={!debugNotifications ? "text-background font-bold" : "text-primary"}>
+              {t("off")}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => toggleDebugNotifications(true)}
+            className={`active:opacity-70 flex-1 items-center justify-center p-4 rounded-xl border ${
+              debugNotifications ? selectedCls : unselectedCls
+            }`}
+          >
+            <Text className={debugNotifications ? "text-background font-bold" : "text-primary"}>
+              {t("on")}
             </Text>
           </Pressable>
         </View>

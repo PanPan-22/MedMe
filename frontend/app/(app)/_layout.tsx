@@ -2,12 +2,16 @@ import { useAuth, useUser } from "@clerk/expo";
 import Feather from "@expo/vector-icons/Feather";
 import * as Notifications from "expo-notifications";
 import { useBrandColor } from "@/hooks/use-brand-color";
+import { useNotificationReconcile } from "@/hooks/use-notification-reconcile";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useSyncEngine } from "@/hooks/use-sync-engine";
 import { useSyncPresence } from "@/hooks/use-sync-presence";
+import { useUserBoundary } from "@/hooks/use-user-boundary";
 import { Link, Redirect, router, Stack, usePathname } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function AppHeader({ displayName }: { displayName: string }) {
@@ -15,11 +19,14 @@ function AppHeader({ displayName }: { displayName: string }) {
   const pathname = usePathname();
   const isSettings = pathname === "/settings";
   const { background } = useBrandColor();
+  const { colorScheme } = useColorScheme();
   return (
     <View
       className="w-full flex-row items-center justify-between px-4 pb-4 bg-primary"
       style={{ paddingTop: insets.top + 12 }}
     >
+      {/* Header background is bg-primary — invert status bar contrast vs the root default. */}
+      <StatusBar style={colorScheme === "dark" ? "dark" : "light"} />
       <Text
         className="text-background text-xl font-semibold flex-1 mr-4"
         numberOfLines={1}
@@ -29,7 +36,7 @@ function AppHeader({ displayName }: { displayName: string }) {
       </Text>
       {!isSettings && (
         <Link href="/settings" push asChild>
-          <Pressable hitSlop={16}>
+          <Pressable className="active:opacity-70" hitSlop={16}>
             <Feather name="settings" size={24} color={background} />
           </Pressable>
         </Link>
@@ -41,7 +48,11 @@ function AppHeader({ displayName }: { displayName: string }) {
 export default function AppLayout() {
   const { isSignedIn, isLoaded } = useAuth();
   const { user } = useUser();
+  const { colorScheme } = useColorScheme();
+  const bg = colorScheme === "dark" ? "#0a1410" : "#f2fbf5";
+  useUserBoundary();
   useNotifications();
+  useNotificationReconcile();
   useSyncPresence();
   useSyncEngine();
 
@@ -87,11 +98,19 @@ export default function AppLayout() {
       screenOptions={{
         header: () => <AppHeader displayName={displayName} />,
         headerShown: true,
+        animation: Platform.OS === "android" ? "simple_push" : "ios_from_right",
+        animationDuration: 250,
+        contentStyle: { backgroundColor: bg },
       }}
     >
       <Stack.Screen
         name="notification-modal"
-        options={{ presentation: "modal", headerShown: false }}
+        options={{
+          presentation: "modal",
+          headerShown: false,
+          animation: "slide_from_bottom",
+          contentStyle: { backgroundColor: bg },
+        }}
       />
     </Stack>
   );

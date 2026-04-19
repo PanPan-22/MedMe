@@ -27,7 +27,7 @@ export default function AddMedicineScreen() {
     <ScrollView className="bg-background px-4 pt-4 h-full">
       <Stack.Screen options={{ headerShown: true, title: t("add_schedule") }} />
       <View className="flex-row items-center gap-4 p-2 mb-4">
-        <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+        <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
           <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
         </Pressable>
         <Text className="text-2xl font-bold text-primary">{t("add_schedule")}</Text>
@@ -36,7 +36,7 @@ export default function AddMedicineScreen() {
         <Pressable
           disabled={!isConnected}
           onPress={() => router.push({ pathname: "/read-label", params: extraParams })}
-          className={`flex-column items-center justify-center w-full rounded-3xl py-10 gap-3 ${
+          className={`active:opacity-70 flex-column items-center justify-center w-full rounded-3xl py-10 gap-3 ${
             isConnected ? "bg-primary" : "bg-gray-400"
           }`}
         >
@@ -54,7 +54,7 @@ export default function AddMedicineScreen() {
         </Pressable>
         <Pressable
           onPress={() => router.push({ pathname: "/manual-add", params: extraParams })}
-          className="flex-column items-center justify-center bg-primary w-full rounded-3xl py-10 gap-3"
+          className="active:opacity-70 flex-column items-center justify-center bg-primary w-full rounded-3xl py-10 gap-3"
         >
           <FontAwesome name="calendar" size={64} color={background} />
           <Text className="text-background text-3xl font-semibold" maxFontSizeMultiplier={1.2}>

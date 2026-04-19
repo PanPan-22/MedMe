@@ -1,4 +1,5 @@
 import * as Notifications from "expo-notifications";
+import type { SQLiteDatabase } from "expo-sqlite";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
@@ -64,12 +65,15 @@ export async function scheduleNotificationsForMed(params: ScheduleParams): Promi
       const fireDate = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate(), h, m, 0);
       if (fireDate <= now) continue;
 
+      const threadId = `med-${patientId ?? "self"}-${timeStr}`;
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: "💊 Time for your medication",
           body: medicineName,
           sound: SOUND_FILE,
           data: { time: timeStr, patientId: patientId ?? null },
+          threadIdentifier: threadId,
+          categoryIdentifier: threadId,
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -88,6 +92,88 @@ export async function cancelNotificationsForMed(notificationIds: string): Promis
   for (const id of notificationIds.split(",").filter(Boolean)) {
     try { await Notifications.cancelScheduledNotificationAsync(id); } catch { /* already gone */ }
   }
+}
+
+interface ScheduleRow {
+  id: number;
+  medicine_name: string;
+  whenToTake: string | null;
+  repeat_days: string | null;
+  stock: number | null;
+  count: number | null;
+  start_date: string | null;
+  patient_id: number | null;
+  notification_id: string | null;
+  kind: string | null;
+}
+
+export async function reconcileNotifications(
+  db: SQLiteDatabase,
+): Promise<{ canceled: number; rescheduled: number }> {
+  const existing = await Notifications.getAllScheduledNotificationsAsync();
+  const existingIds = new Set(existing.map((n) => n.identifier));
+
+  const schedules = await db.getAllAsync<ScheduleRow>(
+    `SELECT id, medicine_name, whenToTake, repeat_days, stock, count,
+            start_date, patient_id, notification_id, kind
+     FROM schedules`,
+  );
+
+  const claimed = new Set<string>();
+  for (const s of schedules) {
+    for (const id of (s.notification_id ?? "").split(",").filter(Boolean)) {
+      claimed.add(id);
+    }
+  }
+
+  let canceled = 0;
+  for (const n of existing) {
+    if (!claimed.has(n.identifier)) {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(n.identifier);
+        canceled++;
+      } catch { /* ignore */ }
+    }
+  }
+
+  let rescheduled = 0;
+  for (const s of schedules) {
+    const claimedIds = (s.notification_id ?? "").split(",").filter(Boolean);
+    const hasTimes = !!s.whenToTake?.trim();
+    const hasDays = !!s.repeat_days?.trim();
+    const shouldHaveNotifs = (s.stock ?? 0) > 0 && (s.count ?? 0) > 0 && hasTimes && hasDays;
+    const missingSome = claimedIds.some((id) => !existingIds.has(id));
+    const hasNoneButShould = claimedIds.length === 0 && shouldHaveNotifs;
+
+    if (!shouldHaveNotifs) {
+      if (claimedIds.length > 0) {
+        for (const id of claimedIds) {
+          try { await Notifications.cancelScheduledNotificationAsync(id); } catch { /* ignore */ }
+        }
+        await db.runAsync(`UPDATE schedules SET notification_id = '' WHERE id = ?`, [s.id]);
+      }
+      continue;
+    }
+
+    if (missingSome || hasNoneButShould) {
+      for (const id of claimedIds) {
+        try { await Notifications.cancelScheduledNotificationAsync(id); } catch { /* ignore */ }
+      }
+      const newIds = await scheduleNotificationsForMed({
+        medicineName: s.medicine_name,
+        whenToTake: s.whenToTake ?? "",
+        repeatDays: s.repeat_days ?? "",
+        stock: s.stock ?? 0,
+        count: s.count ?? 1,
+        startDate: s.start_date ?? undefined,
+        patientId: s.patient_id,
+      });
+      await db.runAsync(`UPDATE schedules SET notification_id = ? WHERE id = ?`, [newIds, s.id]);
+      rescheduled++;
+    }
+  }
+
+  return { canceled, rescheduled };
 }
 
 export function useNotifications() {

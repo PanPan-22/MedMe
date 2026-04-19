@@ -1,6 +1,7 @@
 import { Schedule } from "@/components/local-db";
 import { useBrandColor } from "@/hooks/use-brand-color";
-import { getNextAlarm, slotDayLabelKey } from "@/lib/med-sort";
+import { daysLeftForMed, getNextAlarm, isLowStock, slotDayLabelKey } from "@/lib/med-sort";
+import { useSecureStorage } from "@/hooks/use-securestore";
 import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
@@ -8,9 +9,9 @@ import { Link, Redirect, router, Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, Image, Pressable, Text, useWindowDimensions, View } from "react-native";
+import { FlatList, Image, Pressable, RefreshControl, Text, useWindowDimensions, View } from "react-native";
 
-interface AlarmMed { medicine_name: string; count: number; type: string; image_uri?: string }
+interface AlarmMed { medicine_name: string; count: number; type: string; image_uri?: string; kind?: string }
 interface Patient { id: number; name: string; image_uri?: string; medsAtAlarm: AlarmMed[] }
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -30,8 +31,22 @@ export default function CaretakerHome() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [nextAlarm, setNextAlarm] = useState<{ time: string; dayOffset: number } | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [lowStock, setLowStock] = useState<{ id: number; medicine_name: string; patientName: string; daysLeft: number }[]>([]);
+  const [debugNotifications, setDebugNotifications] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const { getValue } = useSecureStorage();
 
-  useFocusEffect(useCallback(() => { fetchData(); }, []));
+  useFocusEffect(useCallback(() => {
+    fetchData();
+    getValue("debugNotifications").then((v) => setDebugNotifications(v === "true"));
+    const id = setInterval(fetchData, 10_000);
+    return () => clearInterval(id);
+  }, []));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await fetchData(); } finally { setRefreshing(false); }
+  }, []);
 
   const fetchData = async () => {
     const pts = await db.getAllAsync<{ id: number; name: string; image_uri?: string }>("SELECT * FROM patients");
@@ -48,12 +63,23 @@ export default function CaretakerHome() {
             m.patient_id === p.id &&
             m.repeat_days?.includes(alarmDayName) &&
             (m.whenToTake ?? "").split(",").map(s => s.trim()).includes(alarm.time)
-          ).map(m => ({ medicine_name: m.medicine_name, count: m.count, type: m.type, image_uri: m.image_uri }))
+          ).map(m => ({ medicine_name: m.medicine_name, count: m.count, type: m.type, image_uri: m.image_uri, kind: m.kind }))
         : [];
       return { ...p, medsAtAlarm };
     }).filter(p => p.medsAtAlarm.length > 0);
 
     setPatients(enriched);
+
+    const patientNameById = new Map(pts.map(p => [p.id, p.name]));
+    const lowStockRows = allMeds
+      .filter(isLowStock)
+      .map(m => ({
+        id: m.id,
+        medicine_name: m.medicine_name,
+        patientName: patientNameById.get(m.patient_id ?? -1) ?? "",
+        daysLeft: daysLeftForMed(m) ?? 0,
+      }));
+    setLowStock(lowStockRows);
   };
 
   return (
@@ -61,6 +87,13 @@ export default function CaretakerHome() {
       <Stack.Screen options={{ headerShown: true }} />
       <FlatList
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={primary}
+          />
+        }
         ListHeaderComponent={
           <>
             {/* Upcoming alarm */}
@@ -88,6 +121,51 @@ export default function CaretakerHome() {
                 <Text className="text-primary/50">{t("no_medications")}</Text>
               )}
             </View>
+
+            {/* Low stock warning */}
+            {lowStock.length > 0 && (
+              <View className="mb-5 bg-yellow-100 border border-yellow-300 rounded-2xl p-4 gap-3">
+                <View className="flex-row items-center gap-2">
+                  <Ionicons name="warning" size={20} color="#b45309" />
+                  <Text className="text-black font-bold text-base">{t("low_stock")}</Text>
+                </View>
+                <View className="gap-2">
+                  {lowStock.map((m) => {
+                    const critical = m.daysLeft <= 3;
+                    return (
+                      <View key={m.id} className="flex-row items-center gap-3 bg-white/60 rounded-xl px-3 py-2.5">
+                        <View className="w-9 h-9 rounded-full bg-yellow-200 items-center justify-center">
+                          <Ionicons name="medical" size={18} color="#b45309" />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-black font-semibold text-sm" numberOfLines={1}>
+                            {m.medicine_name}
+                          </Text>
+                          {m.patientName ? (
+                            <Text className="text-black/60 text-xs" numberOfLines={1}>
+                              {m.patientName}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <View className={`px-2.5 py-1 rounded-full ${critical ? "bg-red-500" : "bg-amber-500"}`}>
+                          <Text className="text-white font-bold text-xs">{t("days_short", { count: m.daysLeft })}</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* Empty state */}
+            {patients.length === 0 && (
+              <View className="items-center justify-center py-10 gap-3 mb-5 bg-card border border-primary/20 rounded-2xl">
+                <View className="w-20 h-20 rounded-full bg-primary/10 items-center justify-center">
+                  <Ionicons name="people-outline" size={40} color={primary} />
+                </View>
+                <Text className="text-primary/60 text-base text-center px-6">{t("no_medications")}</Text>
+              </View>
+            )}
 
             {/* Patient carousel — only patients with meds at alarm time */}
             {patients.length > 0 && (
@@ -125,21 +203,31 @@ export default function CaretakerHome() {
                       </View>
 
                       {/* Medication list */}
-                      {item.medsAtAlarm.map((med, i) => (
-                        <View key={i} className="flex-row items-center justify-between border-t border-primary/20 px-4 py-3">
-                          <View className="flex-1 mr-3">
-                            <Text className="text-primary font-semibold text-sm" numberOfLines={1}>{med.medicine_name}</Text>
-                            <Text className="text-primary/50 text-xs">{t("amount")}: {med.count} {med.type}</Text>
-                          </View>
-                          {med.image_uri ? (
-                            <Image source={{ uri: med.image_uri }} className="w-11 h-11 rounded-xl" resizeMode="cover" />
-                          ) : (
-                            <View className="w-11 h-11 rounded-xl bg-primary/10 items-center justify-center">
-                              <Ionicons name="medical-outline" size={22} color={primary} />
+                      {item.medsAtAlarm.map((med, i) => {
+                        const kind = med.kind ?? "medication";
+                        const isMeasurement = kind !== "medication";
+                        return (
+                          <View key={i} className="flex-row items-center justify-between border-t border-primary/20 px-4 py-3">
+                            <View className="flex-1 mr-3">
+                              <Text className="text-primary font-semibold text-sm" numberOfLines={1}>{med.medicine_name}</Text>
+                              {!isMeasurement && (
+                                <Text className="text-primary/50 text-xs">{t("amount")}: {med.count} {t(`type_${med.type?.toLowerCase()}`, { defaultValue: med.type })}</Text>
+                              )}
                             </View>
-                          )}
-                        </View>
-                      ))}
+                            {isMeasurement ? (
+                              <View className="w-11 h-11 rounded-xl items-center justify-center">
+                                <Ionicons name={kind === "blood_pressure" ? "heart-outline" : "water-outline"} size={26} color="#dc2626" />
+                              </View>
+                            ) : med.image_uri ? (
+                              <Image source={{ uri: med.image_uri }} className="w-11 h-11 rounded-xl" resizeMode="cover" />
+                            ) : (
+                              <View className="w-11 h-11 rounded-xl bg-primary/10 items-center justify-center">
+                                <Ionicons name="medical-outline" size={22} color={primary} />
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })}
                     </View>
                   )}
                 />
@@ -164,12 +252,14 @@ export default function CaretakerHome() {
                 <Text className="text-background text-xl font-semibold">{t("patients")}</Text>
               </Pressable>
             </Link>
-            <Link href="/debug-notifications" push asChild>
-              <Pressable className="active:opacity-70 flex-row items-center justify-center gap-3 bg-primary/10 rounded-xl p-4 w-full">
-                <Ionicons name="notifications-outline" size={24} color={primary} />
-                <Text className="text-primary text-base font-semibold">Debug: Scheduled Notifications</Text>
-              </Pressable>
-            </Link>
+            {debugNotifications && (
+              <Link href="/debug-notifications" push asChild>
+                <Pressable className="active:opacity-70 flex-row items-center justify-center gap-3 bg-primary/10 rounded-xl p-4 w-full">
+                  <Ionicons name="notifications-outline" size={24} color={primary} />
+                  <Text className="text-primary text-base font-semibold">Debug: Scheduled Notifications</Text>
+                </Pressable>
+              </Link>
+            )}
           </View>
         }
       />

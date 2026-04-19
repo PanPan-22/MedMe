@@ -1,4 +1,5 @@
 import { ConfirmModal } from "@/components/confirm-modal";
+import { FieldLabel } from "@/components/field-label";
 import { Schedule } from "@/components/local-db";
 import { useToast } from "@/context/toast-context";
 import { deleteScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
@@ -29,11 +30,21 @@ function Card({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  required,
+  info,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  info?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <View className="flex-row items-center px-4 py-3">
-      <Text className="text-sm font-semibold text-primary/50 w-24">{label}</Text>
-      <View className="flex-1">{children}</View>
+    <View className="px-4 py-3 gap-2 border-b border-primary/10 last:border-b-0">
+      <FieldLabel size="sm" label={label} required={required} info={info} />
+      <View>{children}</View>
     </View>
   );
 }
@@ -161,18 +172,18 @@ export default function MeasurementDetailScreen() {
 
       <View className="flex-row items-center justify-between p-2 mb-4">
         <View className="flex-row items-center gap-3 flex-1">
-          <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+          <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
             <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
           </Pressable>
           <Ionicons name={kindIcon} size={24} color="#dc2626" />
           <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>{kindLabel}</Text>
         </View>
         {editing ? (
-          <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={cancelEdit}>
+          <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={cancelEdit}>
             <Text className="text-primary font-semibold">{t("cancel")}</Text>
           </Pressable>
         ) : (
-          <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => setEditing(true)}>
+          <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => setEditing(true)}>
             <Ionicons name="create-outline" size={28} color={brandColor} />
           </Pressable>
         )}
@@ -180,24 +191,24 @@ export default function MeasurementDetailScreen() {
 
       {/* Schedule */}
       <Card>
-        <Row label={t("schedule")}>
+        <Row label={t("schedule")} required info={t("info_measurement_schedule")}>
           {editing ? (
             <View className="flex-row flex-wrap gap-2 items-center">
               {times.map((time, i) => (
                 <Pressable
                   key={`${time}-${i}`}
                   onPress={() => { setEditingTimeIndex(i); setTimePickerVisible(true); }}
-                  className="flex-row items-center bg-primary rounded-full px-3 py-1.5 gap-2"
+                  className="active:opacity-70 flex-row items-center bg-primary rounded-full px-3 py-1.5 gap-2"
                 >
                   <Text className="text-background font-semibold">{time}</Text>
-                  <Pressable onPress={() => setTimes(times.filter((_, idx) => idx !== i))} hitSlop={10}>
+                  <Pressable className="active:opacity-70" onPress={() => setTimes(times.filter((_, idx) => idx !== i))} hitSlop={10}>
                     <Ionicons name="close-circle" size={16} color="white" />
                   </Pressable>
                 </Pressable>
               ))}
               <Pressable
                 onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
-                className="flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
+                className="active:opacity-70 flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
               >
                 <Ionicons name="add" size={16} color={brandColor} />
                 <Text className="text-primary font-semibold ml-1">{t("add_time")}</Text>
@@ -209,7 +220,7 @@ export default function MeasurementDetailScreen() {
           {errors.times ? <Text className="text-red-500 text-xs mt-1">{errors.times}</Text> : null}
         </Row>
 
-        <Row label={t("repeat_on")}>
+        <Row label={t("repeat_on")} required info={t("info_measurement_repeat")}>
           {editing ? (
             <View className="flex-row flex-wrap gap-2">
               {DAYS_OF_WEEK.map((day) => {
@@ -222,7 +233,7 @@ export default function MeasurementDetailScreen() {
                       setSelectedDays(next);
                       if (next.length > 0) setErrors((e) => ({ ...e, days: "" }));
                     }}
-                    className={`w-9 h-9 rounded-full items-center justify-center ${
+                    className={`active:opacity-70 w-9 h-9 rounded-full items-center justify-center ${
                       isSelected ? "bg-primary border-2 border-primary" : "bg-card border border-muted"
                     }`}
                   >
@@ -237,9 +248,9 @@ export default function MeasurementDetailScreen() {
           {errors.days ? <Text className="text-red-500 text-xs mt-1">{errors.days}</Text> : null}
         </Row>
 
-        <Row label={t("start_date")}>
+        <Row label={t("start_date")} info={t("info_start_date")}>
           {editing ? (
-            <Pressable onPress={() => setStartPickerVisible(true)} className="bg-card border border-primary rounded-xl px-3 py-2">
+            <Pressable onPress={() => setStartPickerVisible(true)} className="active:opacity-70 bg-card border border-primary rounded-xl px-3 py-2">
               <Text className="text-primary text-base">{formatDate(startDate)}</Text>
             </Pressable>
           ) : (

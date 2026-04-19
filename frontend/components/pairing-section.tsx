@@ -9,7 +9,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, Text, TextInput, View } from "react-native";
 
 function formatRemaining(ms: number): string {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
@@ -27,6 +27,7 @@ export function PairingSection() {
 
   const [link, setLink] = useState<PatientLink | null>(null);
   const [caretakerName, setCaretakerName] = useState<string | null>(null);
+  const [caretakerImage, setCaretakerImage] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [remaining, setRemaining] = useState(0);
@@ -44,11 +45,12 @@ export function PairingSection() {
   }, [user, db]);
 
   useEffect(() => {
-    if (!link) { setCaretakerName(null); return; }
+    if (!link) { setCaretakerName(null); setCaretakerImage(null); return; }
     const unsub = watchUserProfile(link.caretaker_clerk_id, (p) => {
-      if (!p) { setCaretakerName(null); return; }
+      if (!p) { setCaretakerName(null); setCaretakerImage(null); return; }
       const name = [p.firstName, p.lastName].filter(Boolean).join(" ");
       setCaretakerName(name || null);
+      setCaretakerImage(p.imageUrl ?? null);
     });
     return () => unsub();
   }, [link?.caretaker_clerk_id]);
@@ -113,11 +115,22 @@ export function PairingSection() {
 
       {link ? (
         <View className="gap-3">
-          <View className="bg-primary/10 rounded-xl px-4 py-3">
-            <Text className="text-primary/50 text-xs">{t("linked_to_caretaker")}</Text>
-            <Text className="text-primary font-semibold text-base" numberOfLines={1}>
-              {caretakerName ?? t("caretaker_default_label")}
-            </Text>
+          <View className="bg-primary/10 rounded-xl px-4 py-3 flex-row items-center gap-3">
+            {caretakerImage ? (
+              <Image source={{ uri: caretakerImage }} className="w-12 h-12 rounded-full" resizeMode="cover" />
+            ) : (
+              <View className="w-12 h-12 rounded-full bg-primary/20 items-center justify-center">
+                <Text className="text-primary font-bold text-lg">
+                  {(caretakerName ?? t("caretaker_default_label")).charAt(0)}
+                </Text>
+              </View>
+            )}
+            <View className="flex-1">
+              <Text className="text-primary/50 text-xs">{t("linked_to_caretaker")}</Text>
+              <Text className="text-primary font-semibold text-base" numberOfLines={1}>
+                {caretakerName ?? t("caretaker_default_label")}
+              </Text>
+            </View>
           </View>
           <Pressable
             className="active:opacity-70 flex-row items-center justify-center gap-2 border border-red-400 rounded-2xl p-3"

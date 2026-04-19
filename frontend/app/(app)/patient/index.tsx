@@ -1,7 +1,7 @@
 import { Schedule } from "@/components/local-db";
 import { useBrandColor } from "@/hooks/use-brand-color";
 import { useSecureStorage } from "@/hooks/use-securestore";
-import { getUpcomingSlots, slotDayLabelKey, UpcomingSlot } from "@/lib/med-sort";
+import { daysLeftForMed, getUpcomingSlots, isLowStock, slotDayLabelKey, UpcomingSlot } from "@/lib/med-sort";
 import { useUser } from "@clerk/expo";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -13,6 +13,7 @@ import {
   FlatList,
   Image,
   Pressable,
+  RefreshControl,
   Text,
   useWindowDimensions,
   View,
@@ -31,14 +32,20 @@ export default function PatientHome() {
   if (role && role !== "patient") return <Redirect href="/caretaker" />;
 
   const [slots, setSlots] = useState<UpcomingSlot[]>([]);
+  const [lowStock, setLowStock] = useState<Schedule[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [simpleUi, setSimpleUi] = useState(false);
+  const [debugNotifications, setDebugNotifications] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { getValue } = useSecureStorage();
 
   useFocusEffect(
     useCallback(() => {
       fetchData();
       getValue("simpleUi").then((v) => setSimpleUi(v === "true"));
+      getValue("debugNotifications").then((v) => setDebugNotifications(v === "true"));
+      const id = setInterval(fetchData, 10_000);
+      return () => clearInterval(id);
     }, []),
   );
 
@@ -47,7 +54,13 @@ export default function PatientHome() {
       "SELECT * FROM schedules WHERE patient_id IS NULL",
     );
     setSlots(getUpcomingSlots(meds));
+    setLowStock(meds.filter(isLowStock));
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await fetchData(); } finally { setRefreshing(false); }
+  }, []);
 
   return (
     <View className="flex-1 bg-background">
@@ -56,6 +69,13 @@ export default function PatientHome() {
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         data={[]}
         renderItem={null}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={brandColor}
+          />
+        }
         ListHeaderComponent={
           <>
             {/* Next medication header with yellow time pill */}
@@ -93,6 +113,45 @@ export default function PatientHome() {
                 <Text className="text-primary/50">{t("no_medications")}</Text>
               )}
             </View>
+
+            {/* Low stock warning */}
+            {lowStock.length > 0 && (
+              <View className="mb-5 bg-yellow-100 border border-yellow-300 rounded-2xl p-4 gap-3">
+                <View className="flex-row items-center gap-2">
+                  <Ionicons name="warning" size={20} color="#b45309" />
+                  <Text className="text-black font-bold text-base">{t("low_stock")}</Text>
+                </View>
+                <View className="gap-2">
+                  {lowStock.map((m) => {
+                    const d = daysLeftForMed(m) ?? 0;
+                    const critical = d <= 3;
+                    return (
+                      <View key={m.id} className="flex-row items-center gap-3 bg-white/60 rounded-xl px-3 py-2.5">
+                        <View className="w-9 h-9 rounded-full bg-yellow-200 items-center justify-center">
+                          <Ionicons name="medical" size={18} color="#b45309" />
+                        </View>
+                        <Text className="text-black font-semibold text-sm flex-1" numberOfLines={1}>
+                          {m.medicine_name}
+                        </Text>
+                        <View className={`px-2.5 py-1 rounded-full ${critical ? "bg-red-500" : "bg-amber-500"}`}>
+                          <Text className="text-white font-bold text-xs">{t("days_short", { count: d })}</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* Empty state */}
+            {slots.length === 0 && (
+              <View className="items-center justify-center py-10 gap-3 mb-5 bg-card border border-primary/20 rounded-2xl">
+                <View className="w-20 h-20 rounded-full bg-primary/10 items-center justify-center">
+                  <Ionicons name="medical-outline" size={40} color={brandColor} />
+                </View>
+                <Text className="text-primary/60 text-base text-center">{t("no_medications")}</Text>
+              </View>
+            )}
 
             {/* Upcoming meds carousel */}
             {slots.length > 0 && (
@@ -152,7 +211,7 @@ export default function PatientHome() {
                                   </Text>
                                   {kind === "medication" && (
                                     <Text className="text-primary/60 text-xs">
-                                      {t("amount")}: {med.count} {med.type}
+                                      {t("amount")}: {med.count} {t(`type_${med.type?.toLowerCase()}`, { defaultValue: med.type })}
                                     </Text>
                                   )}
                                 </View>
@@ -211,18 +270,20 @@ export default function PatientHome() {
           <View className="gap-3">
             {!simpleUi && (
               <>
-                <Link href="/debug-notifications" push asChild>
-                  <Pressable className="active:opacity-70 flex-row items-center justify-center gap-3 bg-primary/10 rounded-xl p-4 w-full">
-                    <Ionicons
-                      name="notifications-outline"
-                      size={24}
-                      color={brandColor}
-                    />
-                    <Text className="text-primary text-base font-semibold">
-                      Debug: Scheduled Notifications
-                    </Text>
-                  </Pressable>
-                </Link>
+                {debugNotifications && (
+                  <Link href="/debug-notifications" push asChild>
+                    <Pressable className="active:opacity-70 flex-row items-center justify-center gap-3 bg-primary/10 rounded-xl p-4 w-full">
+                      <Ionicons
+                        name="notifications-outline"
+                        size={24}
+                        color={brandColor}
+                      />
+                      <Text className="text-primary text-base font-semibold">
+                        Debug: Scheduled Notifications
+                      </Text>
+                    </Pressable>
+                  </Link>
+                )}
                 <Link href="/management" push asChild>
                   <Pressable className="active:opacity-70 flex-row items-center justify-center gap-3 bg-primary rounded-xl p-4 w-full">
                     <FontAwesome6 name="pills" size={24} color={background} />

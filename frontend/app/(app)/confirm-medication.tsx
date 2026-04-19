@@ -1,3 +1,4 @@
+import { FieldLabel } from "@/components/field-label";
 import { useToast } from "@/context/toast-context";
 import { insertScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
 import { useBrandColor } from "@/hooks/use-brand-color";
@@ -19,9 +20,21 @@ const formatDate = (d: Date) =>
 
 const MEDICATION_TYPES = ["Pills", "Capsule", "Injection", "Other"];
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const TYPE_KEYS: Record<string, string> = {
+  Pills: "type_pills", Capsule: "type_capsule", Injection: "type_injection", Other: "type_other",
+};
 const DAY_KEYS: Record<string, string> = {
   Mon: "day_mon", Tue: "day_tue", Wed: "day_wed", Thu: "day_thu",
   Fri: "day_fri", Sat: "day_sat", Sun: "day_sun",
+};
+
+const calcEndDate = (start: Date, stockVal: string, amountVal: string, timesCount: number): Date => {
+  const s = parseInt(stockVal) || 0;
+  const a = parseInt(amountVal) || 1;
+  const days = timesCount > 0 ? Math.floor(s / (a * timesCount)) : 0;
+  const end = new Date(start);
+  end.setDate(end.getDate() + days);
+  return end;
 };
 
 export default function ConfirmMedicationScreen() {
@@ -42,9 +55,11 @@ export default function ConfirmMedicationScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [times, setTimes] = useState<string[]>([]);
   const [selectedDays, setSelectedDays] = useState<string[]>(DAYS_OF_WEEK);
+  const [startDate, setStartDate] = useState(new Date());
   const [expirationDate, setExpirationDate] = useState<Date | null>(null);
   const [isTimePickerVisible, setTimePickerVisible] = useState(false);
   const [editingTimeIndex, setEditingTimeIndex] = useState<number | null>(null);
+  const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
   const [isExpiryPickerVisible, setExpiryPickerVisible] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -99,7 +114,7 @@ export default function ConfirmMedicationScreen() {
       <Stack.Screen options={{ headerShown: true, title: t("confirm_medication_title") }} />
 
       <View className="flex-row items-center gap-4 p-2 mb-4">
-        <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+        <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
           <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
         </Pressable>
         <Text className="text-2xl font-bold text-primary">{t("review_details")}</Text>
@@ -107,25 +122,35 @@ export default function ConfirmMedicationScreen() {
 
       {/* Medicine Image */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("medicine_image")}</Text>
+        <FieldLabel label={t("medicine_image")} info={t("info_medicine_image")} />
         <Pressable
           onPress={handleImagePicker}
-          className="border-2 border-dashed border-primary rounded-2xl h-40 items-center justify-center overflow-hidden bg-card"
+          className="active:opacity-70 border-2 border-dashed border-primary rounded-2xl overflow-hidden bg-card items-center justify-center"
+          style={{ aspectRatio: 4 / 3 }}
         >
           {imageUri ? (
-            <Image source={{ uri: imageUri }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+            <Image
+              source={{ uri: imageUri }}
+              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+              resizeMode="contain"
+            />
           ) : (
             <View className="items-center gap-2">
-              <Ionicons name="camera-outline" size={36} color={brandColor} />
+              <Ionicons name="camera-outline" size={40} color={brandColor} />
               <Text className="text-primary text-sm">{t("tap_to_add_photo")}</Text>
             </View>
           )}
         </Pressable>
+        {imageUri && (
+          <Pressable onPress={() => setImageUri(null)} className="active:opacity-70 self-end bg-red-500 px-4 py-2 rounded-xl">
+            <Text className="text-white font-semibold text-sm">{t("clear")}</Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Medication Name */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("medication_name")}</Text>
+        <FieldLabel label={t("medication_name")} required info={t("info_medication_name")} />
         <TextInput
           value={name}
           onChangeText={(v) => { setName(v); setErrors((e) => ({ ...e, name: "" })); }}
@@ -138,15 +163,15 @@ export default function ConfirmMedicationScreen() {
 
       {/* Type */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("type")}</Text>
+        <FieldLabel label={t("type")} info={t("info_type")} />
         <View className="flex-row gap-2">
           {MEDICATION_TYPES.map((mType) => (
             <Pressable
               key={mType}
               onPress={() => setMedType(mType)}
-              className={`px-4 py-2 rounded-full border ${medType === mType ? "bg-primary border-primary" : "bg-card border-muted"}`}
+              className={`active:opacity-70 px-4 py-2 rounded-full border ${medType === mType ? "bg-primary border-primary" : "bg-card border-muted"}`}
             >
-              <Text className={medType === mType ? "text-background font-semibold" : "text-primary/60"}>{mType}</Text>
+              <Text className={medType === mType ? "text-background font-semibold" : "text-primary/60"}>{t(TYPE_KEYS[mType])}</Text>
             </Pressable>
           ))}
         </View>
@@ -155,7 +180,7 @@ export default function ConfirmMedicationScreen() {
       {/* Amount + Stock */}
       <View className="flex-row gap-4 px-2 mb-4">
         <View className="flex-1 gap-2">
-          <Text className="text-base font-semibold text-primary">{t("amount")}</Text>
+          <FieldLabel label={t("amount")} required info={t("info_amount")} />
           <TextInput
             value={amount}
             onChangeText={(v) => { setAmount(v); setErrors((e) => ({ ...e, amount: "" })); }}
@@ -167,7 +192,7 @@ export default function ConfirmMedicationScreen() {
           {errors.amount ? <Text className="text-red-500 text-xs">{errors.amount}</Text> : null}
         </View>
         <View className="flex-1 gap-2">
-          <Text className="text-base font-semibold text-primary">{t("stock")}</Text>
+          <FieldLabel label={t("stock")} required info={t("info_stock")} />
           <TextInput
             value={stock}
             onChangeText={(v) => { setStock(v); setErrors((e) => ({ ...e, stock: "" })); }}
@@ -182,7 +207,7 @@ export default function ConfirmMedicationScreen() {
 
       {/* Repeat On */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("repeat_on")}</Text>
+        <FieldLabel label={t("repeat_on")} required info={t("info_repeat_on")} />
         <View className="flex-row justify-between">
           {DAYS_OF_WEEK.map((day) => {
             const isSelected = selectedDays.includes(day);
@@ -194,7 +219,7 @@ export default function ConfirmMedicationScreen() {
                   setSelectedDays(next);
                   if (next.length > 0) setErrors((e) => ({ ...e, days: "" }));
                 }}
-                className={`w-10 h-10 rounded-full items-center justify-center ${isSelected ? "bg-primary border-2 border-primary" : "bg-card border border-muted"}`}
+                className={`active:opacity-70 w-10 h-10 rounded-full items-center justify-center ${isSelected ? "bg-primary border-2 border-primary" : "bg-card border border-muted"}`}
               >
                 <Text className={`text-xs font-bold ${isSelected ? "text-background" : "text-primary/60"}`}>
                   {t(DAY_KEYS[day])}
@@ -208,18 +233,18 @@ export default function ConfirmMedicationScreen() {
 
       {/* Schedule */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("schedule")}</Text>
+        <FieldLabel label={t("schedule")} required info={t("info_schedule")} />
         <View className="flex-row flex-wrap gap-2 items-center">
           {times.map((time, index) => (
-            <Pressable key={index} onPress={() => { setEditingTimeIndex(index); setTimePickerVisible(true); }} className="flex-row items-center bg-primary/10 border border-primary rounded-full px-3 py-1.5">
+            <Pressable key={index} onPress={() => { setEditingTimeIndex(index); setTimePickerVisible(true); }} className="active:opacity-70 flex-row items-center bg-primary/10 border border-primary rounded-full px-3 py-1.5">
               <Text className="text-primary font-bold mr-2">{time}</Text>
-              <Pressable onPress={(e) => { e.stopPropagation(); removeTime(index); }}>
+              <Pressable className="active:opacity-70" onPress={(e) => { e.stopPropagation(); removeTime(index); }}>
                 <Ionicons name="close-circle" size={18} color="#ef4444" />
               </Pressable>
             </Pressable>
           ))}
           <Pressable
-            className="flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
+            className="active:opacity-70 flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
             onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
           >
             <Ionicons name="add" size={16} color={brandColor} />
@@ -229,22 +254,33 @@ export default function ConfirmMedicationScreen() {
         {errors.times ? <Text className="text-red-500 text-xs">{errors.times}</Text> : null}
       </View>
 
-      {/* Expiry Date */}
-      <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("expiry_date")}</Text>
-        <Pressable
-          onPress={() => setExpiryPickerVisible(true)}
-          className="bg-card border border-primary rounded-2xl px-4 h-12 justify-center"
-        >
-          <Text className="text-primary">
-            {expirationDate ? formatDate(expirationDate) : "Select date"}
-          </Text>
-        </Pressable>
+      {/* Dates: Start | End (auto) | Expiry */}
+      <View className="flex-row gap-3 px-2 mb-4">
+        <View className="flex-1 gap-1">
+          <FieldLabel size="sm" label={t("start_date")} info={t("info_start_date")} />
+          <Pressable onPress={() => setStartDatePickerVisible(true)} className="active:opacity-70 bg-card border border-primary rounded-xl h-10 justify-center">
+            <Text className="text-primary text-xs text-center">{formatDate(startDate)}</Text>
+          </Pressable>
+        </View>
+        <View className="flex-1 gap-1">
+          <FieldLabel size="sm" label={t("end_date")} />
+          <View className="bg-primary/5 border border-primary/40 rounded-xl h-10 justify-center">
+            <Text className="text-primary/60 text-xs text-center">{formatDate(calcEndDate(startDate, stock, amount, times.length))}</Text>
+          </View>
+        </View>
+        <View className="flex-1 gap-1">
+          <FieldLabel size="sm" label={t("expiry_date")} info={t("info_expiry_date")} />
+          <Pressable onPress={() => setExpiryPickerVisible(true)} className="active:opacity-70 bg-card border border-primary rounded-xl h-10 justify-center">
+            <Text className="text-primary text-xs text-center">
+              {expirationDate ? formatDate(expirationDate) : "—"}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Additional Notes */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("additional_notes")}</Text>
+        <FieldLabel label={t("additional_notes")} info={t("info_additional_notes")} />
         <TextInput
           value={note}
           onChangeText={setNote}
@@ -266,14 +302,7 @@ export default function ConfirmMedicationScreen() {
               showToast(t("not_signed_in"), "error");
               return;
             }
-            const endDate = (() => {
-              const s = parseInt(stock) || 0;
-              const a = parseInt(amount) || 1;
-              const days = times.length > 0 ? Math.floor(s / (a * times.length)) : 0;
-              const end = new Date();
-              end.setDate(end.getDate() + days);
-              return toLocalISODate(end);
-            })();
+            const endDate = toLocalISODate(calcEndDate(startDate, stock, amount, times.length));
             try {
               let uploadedUri = "";
               if (imageUri) {
@@ -290,7 +319,7 @@ export default function ConfirmMedicationScreen() {
                 expiration_date: expirationDate ? toLocalISODate(expirationDate) : "",
                 image_uri: uploadedUri,
                 repeat_days: selectedDays.join(","),
-                start_date: toLocalISODate(new Date()),
+                start_date: toLocalISODate(startDate),
                 end_date: endDate,
                 patient_id: pid,
               });
@@ -301,7 +330,7 @@ export default function ConfirmMedicationScreen() {
                   repeatDays: selectedDays.join(","),
                   stock: parseInt(stock) || 0,
                   count: parseInt(amount) || 1,
-                  startDate: toLocalISODate(new Date()),
+                  startDate: toLocalISODate(startDate),
                   patientId: pid,
                 });
                 await updateScheduleAndSync(db, user.id, role, id, { notification_id: notifIds });
@@ -320,6 +349,7 @@ export default function ConfirmMedicationScreen() {
       </View>
 
       <DateTimePickerModal isVisible={isTimePickerVisible} mode="time" date={pickerDate} onConfirm={handleTimeConfirm} onCancel={() => { setEditingTimeIndex(null); setTimePickerVisible(false); }} />
+      <DateTimePickerModal isVisible={isStartDatePickerVisible} mode="date" onConfirm={(d) => { setStartDate(d); setStartDatePickerVisible(false); }} onCancel={() => setStartDatePickerVisible(false)} />
       <DateTimePickerModal isVisible={isExpiryPickerVisible} mode="date" onConfirm={(d) => { setExpirationDate(d); setExpiryPickerVisible(false); }} onCancel={() => setExpiryPickerVisible(false)} />
     </ScrollView>
   );

@@ -1,6 +1,7 @@
 import { useToast } from "@/context/toast-context";
 import { readPatientLink, readUserProfile, watchCaretakerPatients, watchPatientLink, watchUserProfile, writeUserProfile } from "@/db/firestore-ops";
 import { getLink, removeLink, upsertLink } from "@/db/sync-db";
+import { backfillToCaretaker } from "@/db/sync-helpers";
 import { cancelNotificationsForMed } from "@/hooks/use-notifications";
 import { useUser } from "@clerk/expo";
 import { useSQLiteContext } from "expo-sqlite";
@@ -29,6 +30,17 @@ export function useSyncPresence() {
   useEffect(() => {
     if (!isLoaded || !user || role !== "patient") return;
 
+    const backfill = async (patientClerkId: string, caretakerClerkId: string) => {
+      try {
+        const { schedules, logs } = await backfillToCaretaker(db, patientClerkId, caretakerClerkId);
+        if (schedules || logs) {
+          console.log(`[sync backfill] enqueued ${schedules} schedule(s) + ${logs} log(s) for new caretaker`);
+        }
+      } catch (e) {
+        console.warn("[sync backfill] failed", e);
+      }
+    };
+
     readPatientLink(user.id)
       .then(async (link) => {
         const existing = await getLink(db, user.id);
@@ -38,6 +50,7 @@ export function useSyncPresence() {
             caretaker_clerk_id: link.caretakerClerkId,
             linked_at: link.linkedAt?.toDate().toISOString() ?? new Date().toISOString(),
           });
+          await backfill(link.patientClerkId, link.caretakerClerkId);
         } else if (!link && existing) {
           await removeLink(db, user.id);
         }
@@ -54,7 +67,10 @@ export function useSyncPresence() {
           caretaker_clerk_id: link.caretakerClerkId,
           linked_at: linkedAt,
         });
-        if (isNew) showToast("A caretaker has been linked to your account.");
+        if (isNew) {
+          showToast("A caretaker has been linked to your account.");
+          await backfill(link.patientClerkId, link.caretakerClerkId);
+        }
       } else if (existing) {
         await removeLink(db, user.id);
         showToast("Your caretaker has unlinked you.");
