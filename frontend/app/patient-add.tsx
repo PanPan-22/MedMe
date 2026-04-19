@@ -18,10 +18,10 @@ export default function AddPatient() {
     const addPatient = async (name: string, age: number) => {
         try {
             await db.runAsync("INSERT INTO patients (name, age) VALUES (?, ?)", [name, age],);
-            console.log("Medicine note inserted successfully");
+            console.log("Patient added successfully");
             return true;
         } catch (error) {
-            console.error("Error inserting medicine note:", error);
+            console.error("Error adding the patient:", error);
             return false;
         }
     }

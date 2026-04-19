@@ -18,8 +18,6 @@ export default function PatientEditScreen() {
     const [patientAge, setPatientAge] = useState(age as string);
     const [loading, setLoading] = useState(false);
 
-    console.log(patientName);
-
     const updatePatient = async () => {
         if (!patientName.trim() || !id) {
             alert('Please enter a name');

@@ -115,13 +115,13 @@ export default function PatientScreen() {
                         <Text>Age: {item.age}</Text>
                         <View className="mt-8">
                             <Link href={{
-                                pathname: '/patient-edit/[id]',
+                                pathname: '/patient-info/[id]',
                                 params: {
                                     id: item.id, name: item.name, age: item.age.toString()
                                 }
                             }} push asChild>
                                 <Pressable className="bg-primary rounded-xl p-4 w-30">
-                                    <Text className="text-2xl text-white">{t("Edit")}</Text>
+                                    <Text className="text-white">{t("View Info")}</Text>
                                 </Pressable>
                             </Link>
                         </View>

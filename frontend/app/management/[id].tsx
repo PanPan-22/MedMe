@@ -39,7 +39,7 @@ export default function individualMedicationScreen() {
           <Pressable onPress={() => router.back()}>
             <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
           </Pressable>
-          <Text className="text-2xl text-primary">Add schedule</Text>
+          <Text className="text-2xl text-primary">Go back</Text>
         </View>
       </View>
       <Text>
