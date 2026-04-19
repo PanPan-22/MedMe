@@ -93,7 +93,7 @@ export default function SignUpScreen() {
         <View className="gap-6">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-3 shrink">
-              <Pressable hitSlop={20} onPress={() => router.back()}>
+              <Pressable className="active:opacity-70" hitSlop={20} onPress={() => router.back()}>
                 <Ionicons name="arrow-back-outline" size={24} color={primary} />
               </Pressable>
               <Text
@@ -119,7 +119,7 @@ export default function SignUpScreen() {
                   <Pressable
                     key={value}
                     onPress={() => setRole(value)}
-                    className={`flex-1 items-center justify-center rounded-2xl p-5 border-2 ${
+                    className={`active:opacity-70 flex-1 items-center justify-center rounded-2xl p-5 border-2 ${
                       selected
                         ? "bg-primary border-primary"
                         : "bg-card border-muted"
@@ -214,6 +214,7 @@ export default function SignUpScreen() {
                 className="flex-1 py-3 text-base text-primary"
               />
               <Pressable
+                className="active:opacity-70"
                 hitSlop={12}
                 onPress={() => setShowPassword((p) => !p)}
               >
@@ -252,6 +253,7 @@ export default function SignUpScreen() {
                 className="flex-1 py-3 text-base text-primary"
               />
               <Pressable
+                className="active:opacity-70"
                 hitSlop={12}
                 onPress={() => setShowPassword((p) => !p)}
               >

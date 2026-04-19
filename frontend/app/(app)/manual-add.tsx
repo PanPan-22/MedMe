@@ -1,3 +1,4 @@
+import { FieldLabel } from "@/components/field-label";
 import { useToast } from "@/context/toast-context";
 import { insertScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
 import { useBrandColor } from "@/hooks/use-brand-color";
@@ -107,7 +108,7 @@ export default function ManualAddScreen() {
       <Stack.Screen options={{ headerShown: true, title: t("manual_add") }} />
 
       <View className="flex-row items-center gap-4 p-2 mb-4">
-        <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+        <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
           <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
         </Pressable>
         <Text className="text-2xl font-bold text-primary">{t("fill_field")}</Text>
@@ -115,10 +116,10 @@ export default function ManualAddScreen() {
 
       {/* Medicine Image */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("medicine_image")}</Text>
+        <FieldLabel label={t("medicine_image")} info={t("info_medicine_image")} />
         <Pressable
           onPress={handleImagePicker}
-          className="border-2 border-dashed border-primary rounded-2xl overflow-hidden bg-card items-center justify-center"
+          className="active:opacity-70 border-2 border-dashed border-primary rounded-2xl overflow-hidden bg-card items-center justify-center"
           style={{ aspectRatio: 4 / 3 }}
         >
           {imageUri ? (
@@ -143,7 +144,7 @@ export default function ManualAddScreen() {
 
       {/* Medication Name */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("medication_name")}</Text>
+        <FieldLabel label={t("medication_name")} required info={t("info_medication_name")} />
         <TextInput
           value={name}
           onChangeText={(v) => { setName(v); setErrors((e) => ({ ...e, name: "" })); }}
@@ -156,13 +157,13 @@ export default function ManualAddScreen() {
 
       {/* Type */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("type")}</Text>
+        <FieldLabel label={t("type")} info={t("info_type")} />
         <View className="flex-row gap-2">
           {MEDICATION_TYPES.map((mType) => (
             <Pressable
               key={mType}
               onPress={() => setMedType(mType)}
-              className={`px-4 py-2 rounded-full border ${medType === mType ? "bg-primary border-primary" : "bg-card border-muted"}`}
+              className={`active:opacity-70 px-4 py-2 rounded-full border ${medType === mType ? "bg-primary border-primary" : "bg-card border-muted"}`}
             >
               <Text className={medType === mType ? "text-background font-semibold" : "text-primary/60"}>{t(TYPE_KEYS[mType])}</Text>
             </Pressable>
@@ -173,7 +174,7 @@ export default function ManualAddScreen() {
       {/* Amount + Stock */}
       <View className="flex-row gap-4 px-2 mb-4">
         <View className="flex-1 gap-2">
-          <Text className="text-base font-semibold text-primary">{t("amount")}</Text>
+          <FieldLabel label={t("amount")} required info={t("info_amount")} />
           <TextInput
             value={amount}
             onChangeText={(v) => { setAmount(v); setErrors((e) => ({ ...e, amount: "" })); }}
@@ -185,7 +186,7 @@ export default function ManualAddScreen() {
           {errors.amount ? <Text className="text-red-500 text-xs">{errors.amount}</Text> : null}
         </View>
         <View className="flex-1 gap-2">
-          <Text className="text-base font-semibold text-primary">{t("stock")}</Text>
+          <FieldLabel label={t("stock")} required info={t("info_stock")} />
           <TextInput
             value={stock}
             onChangeText={(v) => { setStock(v); setErrors((e) => ({ ...e, stock: "" })); }}
@@ -200,7 +201,7 @@ export default function ManualAddScreen() {
 
       {/* Repeat On */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("repeat_on")}</Text>
+        <FieldLabel label={t("repeat_on")} required info={t("info_repeat_on")} />
         <View className="flex-row justify-between">
           {DAYS_OF_WEEK.map((day) => {
             const isSelected = selectedDays.includes(day);
@@ -212,7 +213,7 @@ export default function ManualAddScreen() {
                   setSelectedDays(next);
                   if (next.length > 0) setErrors((e) => ({ ...e, days: "" }));
                 }}
-                className={`w-10 h-10 rounded-full items-center justify-center ${
+                className={`active:opacity-70 w-10 h-10 rounded-full items-center justify-center ${
                   isSelected ? "bg-primary border-2 border-primary" : "bg-card border border-muted"
                 }`}
               >
@@ -228,18 +229,18 @@ export default function ManualAddScreen() {
 
       {/* Schedule */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("schedule")}</Text>
+        <FieldLabel label={t("schedule")} required info={t("info_schedule")} />
         <View className="flex-row flex-wrap gap-2 items-center">
           {times.map((time, index) => (
-            <Pressable key={time} onPress={() => { setEditingTimeIndex(index); setTimePickerVisible(true); }} className="flex-row items-center bg-primary/10 border border-primary rounded-full px-3 py-1.5">
+            <Pressable key={time} onPress={() => { setEditingTimeIndex(index); setTimePickerVisible(true); }} className="active:opacity-70 flex-row items-center bg-primary/10 border border-primary rounded-full px-3 py-1.5">
               <Text className="text-primary font-bold mr-2">{time}</Text>
-              <Pressable onPress={(e) => { e.stopPropagation(); removeTime(index); }}>
+              <Pressable className="active:opacity-70" onPress={(e) => { e.stopPropagation(); removeTime(index); }}>
                 <Ionicons name="close-circle" size={18} color="#ef4444" />
               </Pressable>
             </Pressable>
           ))}
           <Pressable
-            className="flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
+            className="active:opacity-70 flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
             onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
           >
             <Ionicons name="add" size={16} color={brandColor} />
@@ -252,20 +253,20 @@ export default function ManualAddScreen() {
       {/* Dates: Start | End (auto) | Expiry */}
       <View className="flex-row gap-3 px-2 mb-4">
         <View className="flex-1 gap-1">
-          <Text className="text-sm font-semibold text-primary">{t("start_date")}</Text>
-          <Pressable onPress={() => setStartDatePickerVisible(true)} className="bg-card border border-primary rounded-xl h-10 justify-center">
+          <FieldLabel size="sm" label={t("start_date")} info={t("info_start_date")} />
+          <Pressable onPress={() => setStartDatePickerVisible(true)} className="active:opacity-70 bg-card border border-primary rounded-xl h-10 justify-center">
             <Text className="text-primary text-xs text-center">{formatDate(startDate)}</Text>
           </Pressable>
         </View>
         <View className="flex-1 gap-1">
-          <Text className="text-sm font-semibold text-primary">{t("end_date")}</Text>
+          <FieldLabel size="sm" label={t("end_date")} />
           <View className="bg-primary/5 border border-primary/40 rounded-xl h-10 justify-center">
             <Text className="text-primary/60 text-xs text-center">{formatDate(calcEndDate(startDate, stock, amount, times.length))}</Text>
           </View>
         </View>
         <View className="flex-1 gap-1">
-          <Text className="text-sm font-semibold text-primary">{t("expiry_date")}</Text>
-          <Pressable onPress={() => setExpiryPickerVisible(true)} className="bg-card border border-primary rounded-xl h-10 justify-center">
+          <FieldLabel size="sm" label={t("expiry_date")} info={t("info_expiry_date")} />
+          <Pressable onPress={() => setExpiryPickerVisible(true)} className="active:opacity-70 bg-card border border-primary rounded-xl h-10 justify-center">
             <Text className="text-primary text-xs text-center">
               {expirationDate ? formatDate(expirationDate) : "—"}
             </Text>
@@ -275,7 +276,7 @@ export default function ManualAddScreen() {
 
       {/* Additional Notes */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("additional_notes")}</Text>
+        <FieldLabel label={t("additional_notes")} info={t("info_additional_notes")} />
         <TextInput
           value={note}
           onChangeText={setNote}

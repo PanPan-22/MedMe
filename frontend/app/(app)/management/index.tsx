@@ -13,6 +13,7 @@ import {
   Image,
   Modal,
   Pressable,
+  RefreshControl,
   Text,
   TextInput,
   View,
@@ -44,6 +45,7 @@ export default function ManagementScreen() {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [sortMode, setSortMode] = useState<MedSortMode>("default");
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { save, getValue } = useSecureStorage();
 
   useEffect(() => {
@@ -65,10 +67,15 @@ export default function ManagementScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchMeds();
-      const id = setInterval(fetchMeds, 3000);
+      const id = setInterval(fetchMeds, 10_000);
       return () => clearInterval(id);
     }, [pid]),
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await fetchMeds(); } finally { setRefreshing(false); }
+  }, [pid]);
 
   const fetchMeds = async () => {
     try {
@@ -124,12 +131,12 @@ export default function ManagementScreen() {
 
       <View className="flex-row items-center justify-between p-2 mb-4 w-full">
         <View className="flex-row items-center gap-4 flex-1 mr-2">
-          <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+          <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
             <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
           </Pressable>
           <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>{title}</Text>
         </View>
-        <Pressable onPress={() => setShowAddMenu(true)}>
+        <Pressable className="active:opacity-70" onPress={() => setShowAddMenu(true)}>
           <Ionicons name="add-circle-outline" size={32} color={brandColor} />
         </Pressable>
       </View>
@@ -143,7 +150,7 @@ export default function ManagementScreen() {
           placeholderTextColor="#888888"
           className="px-1 py-3 flex-1 text-primary text-lg"
         />
-        <Pressable hitSlop={10} onPress={() => setShowSortMenu(true)}>
+        <Pressable className="active:opacity-70" hitSlop={10} onPress={() => setShowSortMenu(true)}>
           <Ionicons name="swap-vertical" size={22} color={brandColor} />
         </Pressable>
       </View>
@@ -154,6 +161,13 @@ export default function ManagementScreen() {
           keyExtractor={(item) => item.id.toString()}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={brandColor}
+            />
+          }
           ListEmptyComponent={
             <Text className="text-center mt-10 text-primary/50">{t("no_medications")}</Text>
           }

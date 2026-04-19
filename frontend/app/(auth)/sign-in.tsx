@@ -59,7 +59,7 @@ export default function SignInScreen() {
       <View className="flex-1 px-6 justify-center gap-6" style={{ paddingTop: insets.top }}>
         <View className="flex-row items-center justify-between mb-2">
           <View className="flex-row items-center gap-3 shrink">
-            <Pressable hitSlop={20} onPress={() => router.back()}>
+            <Pressable className="active:opacity-70" hitSlop={20} onPress={() => router.back()}>
               <Ionicons name="arrow-back-outline" size={24} color={primary} />
             </Pressable>
             <Text className="text-3xl font-bold text-primary shrink" numberOfLines={1} adjustsFontSizeToFit>{t("sign_in")}</Text>
@@ -94,7 +94,7 @@ export default function SignInScreen() {
               autoCorrect={false}
               className="flex-1 py-3 text-base text-primary"
             />
-            <Pressable hitSlop={12} onPress={() => setShowPassword(p => !p)}>
+            <Pressable className="active:opacity-70" hitSlop={12} onPress={() => setShowPassword(p => !p)}>
               <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={primarySoft} />
             </Pressable>
           </View>

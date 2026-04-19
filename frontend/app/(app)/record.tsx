@@ -5,7 +5,7 @@ import { router, Stack, useFocusEffect, useLocalSearchParams } from "expo-router
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, SectionList, Text, View } from "react-native";
+import { Pressable, RefreshControl, SectionList, Text, View } from "react-native";
 
 interface LogRow {
   id: number;
@@ -85,22 +85,22 @@ function todayStr(): string {
 }
 
 function groupOverallStatus(entries: LogRow[]): "all_taken" | "all_skipped" | "partial" {
-  const taken = entries.filter((e) => e.status === "taken").length;
-  if (taken === entries.length) return "all_taken";
-  if (taken === 0) return "all_skipped";
+  const done = entries.filter((e) => e.status === "taken" || e.status === "recorded").length;
+  if (done === entries.length) return "all_taken";
+  if (done === 0) return "all_skipped";
   return "partial";
 }
 
 function StatusBadge({ status }: { status: "all_taken" | "all_skipped" | "partial" }) {
+  const { t } = useTranslation();
   const colors = {
     all_taken: "bg-green-100 text-green-700",
     all_skipped: "bg-red-100 text-red-600",
     partial: "bg-amber-100 text-amber-700",
   };
-  const labels = { all_taken: "All taken", all_skipped: "All skipped", partial: "Partial" };
   return (
     <View className={`px-3 py-1 rounded-full ${colors[status].split(" ")[0]}`}>
-      <Text className={`text-xs font-semibold ${colors[status].split(" ")[1]}`}>{labels[status]}</Text>
+      <Text className={`text-xs font-semibold ${colors[status].split(" ")[1]}`}>{t(status)}</Text>
     </View>
   );
 }
@@ -114,9 +114,19 @@ export default function RecordScreen() {
   const [preset, setPreset] = useState(3);
   const [sections, setSections] = useState<Section[]>([]);
   const [summary, setSummary] = useState<Summary>({ med: null, bp: null, bs: null });
+  const [refreshing, setRefreshing] = useState(false);
   const { primary: brandColor } = useBrandColor();
 
-  useFocusEffect(useCallback(() => { fetchLogs(); }, [pid, preset]));
+  useFocusEffect(useCallback(() => {
+    fetchLogs();
+    const id = setInterval(fetchLogs, 10_000);
+    return () => clearInterval(id);
+  }, [pid, preset]));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await fetchLogs(); } finally { setRefreshing(false); }
+  }, [pid, preset]);
 
   const fetchLogs = async () => {
     const from = dateNDaysAgo(preset);
@@ -154,7 +164,7 @@ export default function RecordScreen() {
       <View className="px-4 pt-4">
         {/* Header row */}
         <View className="flex-row items-center gap-4 mb-4">
-          <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+          <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
             <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
           </Pressable>
           <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>
@@ -168,7 +178,7 @@ export default function RecordScreen() {
             <Pressable
               key={days}
               onPress={() => setPreset(days)}
-              className={`px-4 py-2 rounded-full border ${preset === days ? "bg-primary border-primary" : "bg-card border-muted"}`}
+              className={`active:opacity-70 px-4 py-2 rounded-full border ${preset === days ? "bg-primary border-primary" : "bg-card border-muted"}`}
             >
               <Text className={`text-sm font-semibold ${preset === days ? "text-background" : "text-primary/60"}`}>
                 {t("days_short", { count: days })}
@@ -182,6 +192,13 @@ export default function RecordScreen() {
         sections={sections}
         keyExtractor={(item) => item.scheduled_time}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={brandColor}
+          />
+        }
         ListHeaderComponent={
           <View className="bg-card border border-primary/20 rounded-2xl mb-4 overflow-hidden">
             <View className="bg-primary px-4 py-3">

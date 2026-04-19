@@ -143,7 +143,7 @@ export default function NotificationModal() {
                   </View>
                   <View className="flex-1">
                     <Text className="text-primary font-semibold text-base">{med.medicine_name}</Text>
-                    <Text className="text-primary/50 text-sm">{med.count} {med.type}</Text>
+                    <Text className="text-primary/50 text-sm">{med.count} {t(`type_${med.type?.toLowerCase()}`, { defaultValue: med.type })}</Text>
                   </View>
                 </Pressable>
               );

@@ -8,11 +8,18 @@ import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { LogBox, Platform, Text, View } from "react-native";
 import { registerSheet, SheetProvider } from "react-native-actions-sheet";
 
 // Cap system font scaling globally so fixed-height layouts don't break
 (Text as any).defaultProps = { ...((Text as any).defaultProps ?? {}), maxFontSizeMultiplier: 1.3 };
+
+// Suppress expo-notifications warnings that only apply in Expo Go on Android.
+LogBox.ignoreLogs([
+  "expo-notifications: Android Push notifications",
+  "expo-notifications functionality",
+  "`expo-notifications` functionality",
+]);
 import "../global.css";
 import "../i18n";
 
@@ -45,11 +52,21 @@ export default function RootLayout() {
     <ClerkProvider publishableKey={publishableKey}>
       <ClerkLoaded>
         <View className={`flex-1 ${colorScheme === "dark" ? "dark" : "light"}`}>
-          <StatusBar style={colorScheme === "dark" ? "dark" : "light"} />
+          {/* Default matches bg-background; AppHeader overrides for bg-primary contexts. */}
+          <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
           <SheetProvider>
             <ToastProvider>
               <SQLiteProvider databaseName="myDatabase.db" onInit={initializeDatabase}>
-                <Stack screenOptions={{ headerShown: false }} />
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    animation: Platform.OS === "android" ? "simple_push" : "ios_from_right",
+                    animationDuration: 250,
+                    contentStyle: {
+                      backgroundColor: colorScheme === "dark" ? "#0a1410" : "#f2fbf5",
+                    },
+                  }}
+                />
               </SQLiteProvider>
             </ToastProvider>
           </SheetProvider>

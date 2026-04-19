@@ -1,3 +1,4 @@
+import { useToast } from "@/context/toast-context";
 import { useBrandColor } from "@/hooks/use-brand-color";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { GoogleGenAI } from "@google/genai";
@@ -24,12 +25,16 @@ enum ScanMethod {
 const medicineSchema = z
   .object({
     medicine_name: z.string().describe("Name of the medicine"),
-    count: z.number().describe("Number of pills"),
-    type: z.string().describe("Type of the medicine"),
+    count: z.number().describe("Number of units to take per dose"),
+    type: z
+      .enum(["Pills", "Capsule", "Injection", "Other"])
+      .describe(
+        "Medication form. Must be exactly one of: Pills (tablets), Capsule, Injection, or Other. Use 'Pills' when unsure.",
+      ),
     whenToTake: z
       .string()
       .describe(
-        "Array of times to take the medicine in HH:MM format (e.g., 08:00, 14:00)",
+        "Comma-separated times to take the medicine in HH:MM 24-hour format (e.g., '08:00,14:00')",
       ),
     additional: z
       .string()
@@ -39,11 +44,17 @@ const medicineSchema = z
 
 const jsonSchema = zodToJsonSchema(medicineSchema, "medicineSchema");
 
-const Gemini_key = "AIzaSyCaANmyo-BkSvg_HUZakeQmaoUkVQYRDdY";
-const Fallback_key = "AIzaSyAau1ocYY2EHhe_RqDleLf7QQx8TLgO4pA";
+const LANGUAGE_NAMES: Record<string, string> = { en: "English", th: "Thai" };
 
 const TalkToGenAI = async (prompt: string): Promise<string> => {
-  const keys = [Gemini_key, Fallback_key];
+  const keys = [
+    process.env.EXPO_PUBLIC_GEMINI_KEY,
+    process.env.EXPO_PUBLIC_GEMINI_KEY_FALLBACK,
+  ].filter((k): k is string => !!k);
+  if (keys.length === 0) {
+    console.warn("No Gemini API keys configured");
+    return "ERROR_FAILED_ALL_KEYS";
+  }
 
   for (let i = 0; i < keys.length; i++) {
     try {
@@ -116,8 +127,9 @@ const scanWithGoogleVision = async (uri: string) => {
 };
 
 export default function MedicineScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { primary: brandColor } = useBrandColor();
+  const { showToast } = useToast();
   const [image, setImage] = useState("");
   const [scannedText, setScannedText] = useState("");
   const [loading1, setLoading1] = useState(false); // Scanning
@@ -133,17 +145,20 @@ export default function MedicineScreen() {
     try {
       const text = await scanWithGoogleVision(image);
       if (!text || text === "No text found") {
-        alert(t("could_not_read_text"));
+        showToast(t("could_not_read_text"), "error");
         setLoading1(false);
         return;
       }
 
       setLoading2(true);
-      const aiResponse = await TalkToGenAI("Turn this text into JSON: " + text);
+      const lang = LANGUAGE_NAMES[i18n.resolvedLanguage ?? "en"] ?? "English";
+      const aiResponse = await TalkToGenAI(
+        `Extract medication info from the label text below as JSON. Write the medicine_name and additional fields in ${lang} (translate if the source is in another language, but keep brand/trademark names in their original script). type, whenToTake, and count stay structural.\n\nLabel text:\n${text}`,
+      );
 
       // FIX: Check if the AI call actually succeeded
       if (aiResponse === "ERROR_FAILED_ALL_KEYS") {
-        alert(t("ai_unavailable"));
+        showToast(t("ai_unavailable"), "error");
         return;
       }
 
@@ -161,7 +176,7 @@ export default function MedicineScreen() {
       });
     } catch (error) {
       console.error("Combined scan failed:", error);
-      alert(t("something_went_wrong"));
+      showToast(t("something_went_wrong"), "error");
     } finally {
       setLoading1(false);
       setLoading2(false);
@@ -171,9 +186,9 @@ export default function MedicineScreen() {
   const handleImagePickerSheet = async () => {
     console.log("Opening image picker sheet...");
     // 1. Tell TS exactly what the sheet returns (an object with a uri string)
-    const result = (await SheetManager.show("image-picker-sheet")) as
-      | { uri: string }
-      | undefined;
+    const result = (await SheetManager.show("image-picker-sheet", {
+      payload: { noCrop: true },
+    })) as { uri: string } | undefined;
 
     // 2. Safely check if result exists, then extract the uri
     if (result && result.uri) {
@@ -186,7 +201,7 @@ export default function MedicineScreen() {
     <ScrollView className="bg-background px-4 pt-4 h-full">
       <Stack.Screen options={{ headerShown: true, title: t("read_label") }} />
       <View className="flex-row items-center gap-4 p-2 mb-4">
-        <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+        <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
           <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
         </Pressable>
         <Text className="text-2xl font-bold text-primary">{t("read_label")}</Text>
@@ -195,8 +210,8 @@ export default function MedicineScreen() {
         <Text className="text-base font-semibold text-primary">{t("medicine_image")}</Text>
         <Pressable
           onPress={handleImagePickerSheet}
-          className="border-2 border-dashed border-primary rounded-2xl overflow-hidden bg-card items-center justify-center"
-          style={{ aspectRatio: 4 / 3 }}
+          className="active:opacity-70 border-2 border-dashed border-primary rounded-2xl overflow-hidden bg-card items-center justify-center"
+          style={{ aspectRatio: 1 }}
         >
           {image === "" ? (
             <View className="items-center gap-2">

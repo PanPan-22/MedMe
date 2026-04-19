@@ -1,3 +1,4 @@
+import { FieldLabel } from "@/components/field-label";
 import { useToast } from "@/context/toast-context";
 import { insertScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
 import { useBrandColor } from "@/hooks/use-brand-color";
@@ -112,7 +113,7 @@ export default function AddMeasurementScreen() {
       <Stack.Screen options={{ headerShown: true, title: t("add_measurement") }} />
 
       <View className="flex-row items-center gap-4 p-2 mb-4">
-        <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+        <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
           <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
         </Pressable>
         <Text className="text-2xl font-bold text-primary">{title}</Text>
@@ -120,15 +121,15 @@ export default function AddMeasurementScreen() {
 
       {/* Start Date */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("start_date")}</Text>
-        <Pressable onPress={() => setStartDatePickerVisible(true)} className="bg-card border border-primary rounded-xl h-10 justify-center">
+        <FieldLabel label={t("start_date")} info={t("info_start_date")} />
+        <Pressable onPress={() => setStartDatePickerVisible(true)} className="active:opacity-70 bg-card border border-primary rounded-xl h-10 justify-center">
           <Text className="text-primary text-base pl-3">{formatDate(startDate)}</Text>
         </Pressable>
       </View>
 
       {/* Days */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("repeat_on")}</Text>
+        <FieldLabel label={t("repeat_on")} required info={t("info_measurement_repeat")} />
         <View className="flex-row gap-2">
           {DAYS_OF_WEEK.map((day) => {
             const isSelected = selectedDays.includes(day);
@@ -140,7 +141,7 @@ export default function AddMeasurementScreen() {
                   setSelectedDays(next);
                   if (next.length > 0) setErrors((e) => ({ ...e, days: "" }));
                 }}
-                className={`w-10 h-10 rounded-full items-center justify-center ${
+                className={`active:opacity-70 w-10 h-10 rounded-full items-center justify-center ${
                   isSelected ? "bg-primary border-2 border-primary" : "bg-card border border-muted"
                 }`}
               >
@@ -154,23 +155,23 @@ export default function AddMeasurementScreen() {
 
       {/* Times */}
       <View className="gap-2 px-2 mb-4">
-        <Text className="text-base font-semibold text-primary">{t("schedule")}</Text>
+        <FieldLabel label={t("schedule")} required info={t("info_measurement_schedule")} />
         <View className="flex-row flex-wrap gap-2 items-center">
           {times.map((time, i) => (
             <Pressable
               key={`${time}-${i}`}
               onPress={() => { setEditingTimeIndex(i); setTimePickerVisible(true); }}
-              className="flex-row items-center bg-primary rounded-full px-3 py-1.5 gap-2"
+              className="active:opacity-70 flex-row items-center bg-primary rounded-full px-3 py-1.5 gap-2"
             >
               <Text className="text-background font-semibold">{time}</Text>
-              <Pressable onPress={() => setTimes(times.filter((_, idx) => idx !== i))} hitSlop={10}>
+              <Pressable className="active:opacity-70" onPress={() => setTimes(times.filter((_, idx) => idx !== i))} hitSlop={10}>
                 <Ionicons name="close-circle" size={16} color={background} />
               </Pressable>
             </Pressable>
           ))}
           <Pressable
             onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
-            className="flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
+            className="active:opacity-70 flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
           >
             <Ionicons name="add" size={16} color={brandColor} />
             <Text className="text-primary font-semibold ml-1">{t("add_time")}</Text>

@@ -14,16 +14,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 declare module "react-native-actions-sheet" {
   interface Sheets {
     "image-picker-sheet": SheetDefinition<{
-      payload: { aspect?: [number, number] } | undefined;
+      payload: { aspect?: [number, number]; noCrop?: boolean } | undefined;
     }>;
   }
 }
 
 const ImageSheet = (props: SheetProps<"image-picker-sheet">) => {
+  const noCrop = props.payload?.noCrop ?? false;
   const aspect = props.payload?.aspect ?? [4, 3];
   const { t } = useTranslation();
   const { background } = useBrandColor();
   const insets = useSafeAreaInsets();
+
+  const pickerOptions: ImagePicker.ImagePickerOptions = noCrop
+    ? { mediaTypes: ["images"], allowsEditing: false, quality: 0.9 }
+    : { mediaTypes: ["images"], allowsEditing: true, aspect, quality: 0.9 };
 
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -32,12 +37,7 @@ const ImageSheet = (props: SheetProps<"image-picker-sheet">) => {
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect,
-      quality: 0.9,
-    });
+    const result = await ImagePicker.launchCameraAsync(pickerOptions);
 
     if (!result.canceled) {
       SheetManager.hide("image-picker-sheet", {
@@ -47,12 +47,7 @@ const ImageSheet = (props: SheetProps<"image-picker-sheet">) => {
   };
 
   const handleImagePickerPress = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect,
-      quality: 0.9,
-    });
+    const result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
 
     if (!result.canceled) {
       SheetManager.hide("image-picker-sheet", {

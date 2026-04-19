@@ -17,6 +17,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   Text,
   TextInput,
   View,
@@ -60,6 +61,7 @@ export default function PatientListScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sortMode, setSortMode] = useState<PatientSortMode>("default");
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { save, getValue } = useSecureStorage();
 
   useEffect(() => {
@@ -79,7 +81,16 @@ export default function PatientListScreen() {
     return [...results].sort((a, b) => a.name.localeCompare(b.name));
   }, [results, sortMode]);
 
-  useFocusEffect(useCallback(() => { fetchPatients(); }, []));
+  useFocusEffect(useCallback(() => {
+    fetchPatients();
+    const id = setInterval(fetchPatients, 10_000);
+    return () => clearInterval(id);
+  }, []));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await fetchPatients(); } finally { setRefreshing(false); }
+  }, []);
 
   const searchPatient = async (query: string) => {
     if (!query.trim()) { fetchPatients(); return; }
@@ -177,17 +188,17 @@ export default function PatientListScreen() {
       <View className="px-4 pt-4">
         <View className="flex-row items-center justify-between p-2 mb-4 w-full">
           <View className="flex-row items-center gap-4">
-            <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+            <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
               <Ionicons name="arrow-back-outline" size={24} color={theme.primary} />
             </Pressable>
             <Text className="text-2xl font-bold text-primary">{t("patients")}</Text>
           </View>
           {mode === "view" ? (
-            <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => setShowActionModal(true)}>
+            <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => setShowActionModal(true)}>
               <Ionicons name="create-outline" size={32} color={theme.primary} />
             </Pressable>
           ) : (
-            <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={exitEditMode}>
+            <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={exitEditMode}>
               <Text className="text-primary font-semibold text-base">{t("done")}</Text>
             </Pressable>
           )}
@@ -201,7 +212,7 @@ export default function PatientListScreen() {
             placeholderTextColor="#888888"
             className="px-1 py-2 flex-1 text-primary text-lg"
           />
-          <Pressable hitSlop={10} onPress={() => setShowSortMenu(true)}>
+          <Pressable className="active:opacity-70" hitSlop={10} onPress={() => setShowSortMenu(true)}>
             <Ionicons name="swap-vertical" size={22} color={theme.primary} />
           </Pressable>
         </View>
@@ -214,6 +225,13 @@ export default function PatientListScreen() {
         keyExtractor={(item) => item.id.toString()}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.primary}
+          />
+        }
         ListEmptyComponent={<Text className="text-center mt-10 text-primary/50">{t("no_patients")}</Text>}
         renderItem={({ item }) => (
           <Pressable
@@ -301,7 +319,7 @@ export default function PatientListScreen() {
             <Pressable className="bg-background rounded-3xl p-6 w-full" onPress={() => {}}>
               <View className="flex-row items-center justify-between mb-6">
                 <Text className="text-2xl font-bold text-primary">{t("link_patient")}</Text>
-                <Pressable hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }} onPress={closeAddModal}>
+                <Pressable className="active:opacity-70" hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }} onPress={closeAddModal}>
                   <Ionicons name="close" size={24} color={theme.primary} />
                 </Pressable>
               </View>

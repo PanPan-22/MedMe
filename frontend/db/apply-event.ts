@@ -1,5 +1,6 @@
 import { cancelNotificationsForMed, scheduleNotificationsForMed } from "@/hooks/use-notifications";
 import * as SQLite from "expo-sqlite";
+import { readUserProfile } from "./firestore-ops";
 import { SyncEvent } from "./sync-types";
 
 type ApplyContext = {
@@ -12,11 +13,34 @@ async function resolvePatientLocalId(
   db: SQLite.SQLiteDatabase,
   patientClerkId: string,
 ): Promise<number | null> {
-  const row = await db.getFirstAsync<{ id: number }>(
+  const existing = await db.getFirstAsync<{ id: number }>(
     `SELECT id FROM patients WHERE clerk_user_id = ?`,
     [patientClerkId],
   );
-  return row?.id ?? null;
+  if (existing?.id) return existing.id;
+
+  // Race condition safety net: the patient link exists remotely (otherwise this
+  // event wouldn't have reached our inbox) but our local patients row hasn't
+  // been written yet by use-sync-presence. Fetch the profile and create a stub
+  // row inline so the schedule/log event doesn't get dropped.
+  try {
+    const profile = await readUserProfile(patientClerkId);
+    if (!profile) return null;
+    const fullName =
+      [profile.firstName, profile.lastName].filter(Boolean).join(" ") || "Patient";
+    await db.runAsync(
+      `INSERT OR IGNORE INTO patients (name, image_uri, clerk_user_id, updated_at) VALUES (?, ?, ?, ?)`,
+      [fullName, profile.imageUrl ?? null, profile.clerkId, new Date().toISOString()],
+    );
+    const created = await db.getFirstAsync<{ id: number }>(
+      `SELECT id FROM patients WHERE clerk_user_id = ?`,
+      [patientClerkId],
+    );
+    return created?.id ?? null;
+  } catch (e) {
+    console.warn("[sync] resolvePatientLocalId inline create failed", e);
+    return null;
+  }
 }
 
 async function findScheduleBySyncId(db: SQLite.SQLiteDatabase, syncId: string) {
@@ -134,12 +158,19 @@ async function applyLogUpsert(ctx: ApplyContext, event: SyncEvent) {
     if (localPatientId == null) return;
   }
 
+  // Resolve schedule by sync_id only; the sender's local schedule_id is meaningless
+  // to us. Fall back to sender's schedule_id ONLY when self is the patient and the
+  // schedule existed locally (same device), i.e. identical IDs.
   const scheduleRow = await ctx.db.getFirstAsync<{ id: number }>(
     `SELECT id FROM schedules WHERE sync_id = ?`,
     [p.schedule_sync_id ?? ""],
   );
-  const scheduleId = scheduleRow?.id ?? p.schedule_id ?? null;
-  if (scheduleId == null) return;
+  const scheduleId =
+    scheduleRow?.id ?? (ctx.selfRole === "patient" ? p.schedule_id ?? null : null);
+  if (scheduleId == null) {
+    console.warn(`[sync] log event ignored — schedule sync_id ${(p.schedule_sync_id ?? "").slice(0, 8)} not yet local`);
+    return;
+  }
 
   await ctx.db.runAsync(
     `INSERT INTO logs

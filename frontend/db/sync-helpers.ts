@@ -308,3 +308,99 @@ export async function deleteLogAndSync(
     });
   }
 }
+
+/**
+ * Push every local schedule + log owned by the patient up to a newly linked caretaker.
+ * Used when a patient has existing data from before pairing, or re-links after an unlink.
+ * Safe to call repeatedly — event_id dedup on the caretaker side prevents double-apply.
+ */
+export async function backfillToCaretaker(
+  db: SQLite.SQLiteDatabase,
+  patientClerkId: string,
+  caretakerClerkId: string,
+): Promise<{ schedules: number; logs: number }> {
+  const schedules = await db.getAllAsync<{
+    id: number; sync_id: string | null;
+    medicine_name: string; type: string | null; count: number | null;
+    whenToTake: string | null; additional: string | null; stock: number | null;
+    expiration_date: string | null; image_uri: string | null;
+    repeat_days: string | null; start_date: string | null; end_date: string | null;
+    kind: string | null; updated_at: string | null;
+  }>(
+    `SELECT id, sync_id, medicine_name, type, count, whenToTake, additional, stock,
+            expiration_date, image_uri, repeat_days, start_date, end_date, kind, updated_at
+     FROM schedules WHERE patient_id IS NULL`,
+  );
+
+  let scheduleCount = 0;
+  for (const s of schedules) {
+    let syncId = s.sync_id;
+    if (!syncId) {
+      syncId = newId();
+      await db.runAsync(`UPDATE schedules SET sync_id = ? WHERE id = ?`, [syncId, s.id]);
+    }
+    await enqueue(db, {
+      targetClerkId: caretakerClerkId,
+      type: "schedule.upsert",
+      payload: {
+        sync_id: syncId,
+        patient_clerk_id: patientClerkId,
+        medicine_name: s.medicine_name,
+        type: s.type,
+        count: s.count,
+        whenToTake: s.whenToTake,
+        additional: s.additional,
+        stock: s.stock ?? 0,
+        expiration_date: s.expiration_date,
+        image_uri: s.image_uri,
+        repeat_days: s.repeat_days ?? "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+        start_date: s.start_date,
+        end_date: s.end_date,
+        kind: s.kind ?? "medication",
+      },
+      sourceUpdatedAt: s.updated_at ?? nowIso(),
+    });
+    scheduleCount++;
+  }
+
+  const logs = await db.getAllAsync<{
+    id: number; sync_id: string | null; schedule_id: number;
+    scheduled_time: string; log_date: string; timestamp: string;
+    status: string; value: string | null; updated_at: string | null;
+    schedule_sync_id: string | null;
+  }>(
+    `SELECT l.id, l.sync_id, l.schedule_id, l.scheduled_time, l.log_date, l.timestamp,
+            l.status, l.value, l.updated_at, s.sync_id AS schedule_sync_id
+     FROM logs l
+     LEFT JOIN schedules s ON l.schedule_id = s.id
+     WHERE l.patient_id IS NULL`,
+  );
+
+  let logCount = 0;
+  for (const lg of logs) {
+    let syncId = lg.sync_id;
+    if (!syncId) {
+      syncId = newId();
+      await db.runAsync(`UPDATE logs SET sync_id = ? WHERE id = ?`, [syncId, lg.id]);
+    }
+    await enqueue(db, {
+      targetClerkId: caretakerClerkId,
+      type: "log.upsert",
+      payload: {
+        sync_id: syncId,
+        patient_clerk_id: patientClerkId,
+        schedule_sync_id: lg.schedule_sync_id,
+        schedule_id: lg.schedule_id,
+        scheduled_time: lg.scheduled_time,
+        log_date: lg.log_date,
+        timestamp: lg.timestamp,
+        status: lg.status,
+        value: lg.value,
+      },
+      sourceUpdatedAt: lg.updated_at ?? lg.timestamp,
+    });
+    logCount++;
+  }
+
+  return { schedules: scheduleCount, logs: logCount };
+}
