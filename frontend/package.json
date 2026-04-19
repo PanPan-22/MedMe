@@ -10,14 +10,6 @@
     "web": "expo start --web",
     "lint": "expo lint"
   },
-  "overrides": {
-    "react-native-worklets": "0.7.4"
-  },
-  "expo": {
-    "install": {
-      "exclude": ["react-native-worklets"]
-    }
-  },
   "dependencies": {
     "@clerk/expo": "^3.2.1",
     "@expo/vector-icons": "^15.0.3",
@@ -60,7 +52,7 @@
     "react-dom": "19.1.0",
     "react-i18next": "^17.0.2",
     "react-native": "0.81.5",
-    "react-native-actions-sheet": "^10.1.2",
+    "react-native-actions-sheet": "0.9.7",
     "react-native-elements": "^3.4.3",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-image-picker": "^8.2.1",
@@ -74,7 +66,8 @@
     "react-native-screens": "~4.16.0",
     "react-native-vision-camera": "^4.7.3",
     "react-native-web": "~0.21.0",
-    "react-native-worklets": "0.7.4",
+    "react-native-worklets": "0.5.1",
+    "react-refresh": "^0.18.0",
     "tailwindcss": "^3.4.19",
     "tesseract.js": "^7.0.0",
     "zod": "^3.25.76",
