@@ -1,5 +1,6 @@
 import { useToast } from "@/context/toast-context";
 import { insertScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
+import { useBrandColor } from "@/hooks/use-brand-color";
 import { scheduleNotificationsForMed } from "@/hooks/use-notifications";
 import { toLocalISODate } from "@/lib/date";
 import { uploadMedImage } from "@/lib/upload";
@@ -31,6 +32,7 @@ const DAY_KEYS: Record<string, string> = {
 export default function ManualAddScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { primary: brandColor } = useBrandColor();
   const { showToast } = useToast();
   const db = useSQLiteContext();
   const { user } = useUser();
@@ -129,8 +131,8 @@ export default function ManualAddScreen() {
             />
           ) : (
             <View className="items-center gap-2">
-              <Ionicons name="camera-outline" size={40} color={colors.primary} />
-              <Text className="text-primary text-sm">Tap to add photo</Text>
+              <Ionicons name="camera-outline" size={40} color={brandColor} />
+              <Text className="text-primary text-sm">{t("tap_to_add_photo")}</Text>
             </View>
           )}
         </Pressable>
@@ -164,7 +166,7 @@ export default function ManualAddScreen() {
               onPress={() => setMedType(mType)}
               className={`px-4 py-2 rounded-full border ${medType === mType ? "bg-primary border-primary" : "bg-card border-muted"}`}
             >
-              <Text className={medType === mType ? "text-white font-semibold" : "text-gray-500"}>{t(TYPE_KEYS[mType])}</Text>
+              <Text className={medType === mType ? "text-background font-semibold" : "text-primary/60"}>{t(TYPE_KEYS[mType])}</Text>
             </Pressable>
           ))}
         </View>
@@ -216,7 +218,7 @@ export default function ManualAddScreen() {
                   isSelected ? "bg-primary border-2 border-primary" : "bg-card border border-muted"
                 }`}
               >
-                <Text className={`text-xs font-bold ${isSelected ? "text-white" : "text-gray-400"}`}>
+                <Text className={`text-xs font-bold ${isSelected ? "text-background" : "text-primary/60"}`}>
                   {t(DAY_KEYS[day])}
                 </Text>
               </Pressable>
@@ -259,7 +261,7 @@ export default function ManualAddScreen() {
         </View>
         <View className="flex-1 gap-1">
           <Text className="text-sm font-semibold text-primary">{t("end_date")}</Text>
-          <View className="bg-primary/5 border border-primary/30 rounded-xl h-10 justify-center">
+          <View className="bg-primary/5 border border-primary/40 rounded-xl h-10 justify-center">
             <Text className="text-primary/60 text-xs text-center">{formatDate(calcEndDate(startDate, stock, amount, times.length))}</Text>
           </View>
         </View>
@@ -338,7 +340,7 @@ export default function ManualAddScreen() {
             }
           }}
         >
-          <Text className="text-white text-xl font-bold">{t("save")}</Text>
+          <Text className="text-background text-xl font-bold">{t("save")}</Text>
         </Pressable>
       </View>
 

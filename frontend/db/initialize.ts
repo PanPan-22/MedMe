@@ -20,7 +20,8 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
         start_date TEXT,
         end_date TEXT,
         patient_id INTEGER,
-        updated_at TEXT
+        updated_at TEXT,
+        kind TEXT DEFAULT 'medication'
       );
     `);
 
@@ -44,7 +45,8 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
         timestamp TEXT NOT NULL,
         status TEXT NOT NULL,
         patient_id INTEGER,
-        updated_at TEXT
+        updated_at TEXT,
+        value TEXT
       );
     `);
 
@@ -102,9 +104,11 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
       `ALTER TABLE schedules ADD COLUMN repeat_days TEXT DEFAULT 'Mon,Tue,Wed,Thu,Fri,Sat,Sun'`,
       `ALTER TABLE schedules ADD COLUMN start_date TEXT`,
       `ALTER TABLE schedules ADD COLUMN end_date TEXT`,
+      `ALTER TABLE schedules ADD COLUMN kind TEXT DEFAULT 'medication'`,
       `ALTER TABLE medication_logs ADD COLUMN sync_id TEXT`,
       `ALTER TABLE medication_logs ADD COLUMN updated_at TEXT`,
       `ALTER TABLE medication_logs ADD COLUMN patient_id INTEGER`,
+      `ALTER TABLE medication_logs ADD COLUMN value TEXT`,
     ];
     for (const sql of migrations) {
       try { await db.execAsync(sql); } catch { /* already exists */ }

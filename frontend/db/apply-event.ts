@@ -62,8 +62,8 @@ async function applyScheduleUpsert(ctx: ApplyContext, event: SyncEvent) {
   await ctx.db.runAsync(
     `INSERT INTO schedules
       (sync_id, medicine_name, type, count, whenToTake, additional, notification_id,
-       stock, expiration_date, image_uri, repeat_days, start_date, end_date, patient_id, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       stock, expiration_date, image_uri, repeat_days, start_date, end_date, patient_id, updated_at, kind)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(sync_id) DO UPDATE SET
        medicine_name = excluded.medicine_name,
        type = excluded.type,
@@ -76,12 +76,14 @@ async function applyScheduleUpsert(ctx: ApplyContext, event: SyncEvent) {
        repeat_days = excluded.repeat_days,
        start_date = excluded.start_date,
        end_date = excluded.end_date,
-       updated_at = excluded.updated_at`,
+       updated_at = excluded.updated_at,
+       kind = excluded.kind`,
     [
       syncId, p.medicine_name, p.type ?? null, p.count ?? null, p.whenToTake ?? null,
       p.additional ?? null, null, p.stock ?? 0, p.expiration_date ?? null,
       p.image_uri ?? null, p.repeat_days ?? "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
       p.start_date ?? null, p.end_date ?? null, localPatientId, event.sourceUpdatedAt,
+      p.kind ?? "medication",
     ],
   );
 
@@ -141,16 +143,17 @@ async function applyLogUpsert(ctx: ApplyContext, event: SyncEvent) {
 
   await ctx.db.runAsync(
     `INSERT INTO medication_logs
-      (sync_id, medication_id, scheduled_time, log_date, timestamp, status, patient_id, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (sync_id, medication_id, scheduled_time, log_date, timestamp, status, patient_id, updated_at, value)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(sync_id) DO UPDATE SET
        medication_id = excluded.medication_id,
        scheduled_time = excluded.scheduled_time,
        log_date = excluded.log_date,
        timestamp = excluded.timestamp,
        status = excluded.status,
-       updated_at = excluded.updated_at`,
-    [syncId, medicationId, p.scheduled_time, p.log_date, p.timestamp, p.status, localPatientId, event.sourceUpdatedAt],
+       updated_at = excluded.updated_at,
+       value = excluded.value`,
+    [syncId, medicationId, p.scheduled_time, p.log_date, p.timestamp, p.status, localPatientId, event.sourceUpdatedAt, p.value ?? null],
   );
 }
 

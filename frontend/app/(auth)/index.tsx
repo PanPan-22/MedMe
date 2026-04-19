@@ -1,4 +1,5 @@
 import LanguageToggle from "@/components/language-toggle";
+import { useBrandColor } from "@/hooks/use-brand-color";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -8,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function WelcomeScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { background } = useBrandColor();
 
   return (
     <View className="flex-1 bg-background px-6" style={{ paddingTop: insets.top + 12 }}>
@@ -18,7 +20,7 @@ export default function WelcomeScreen() {
       <View className="flex-1 items-center justify-center gap-8">
         <View className="items-center gap-3">
           <View className="bg-primary rounded-3xl p-5 mb-2">
-            <Ionicons name="medkit" size={56} color="white" />
+            <Ionicons name="medkit" size={56} color={background} />
           </View>
           <Text className="text-4xl font-bold text-primary">MedMe</Text>
           <Text className="text-primary/50 text-base text-center">{t("app_tagline")}</Text>
@@ -27,7 +29,7 @@ export default function WelcomeScreen() {
         <View className="w-full gap-3">
           <Link href="/(auth)/sign-in" asChild>
             <Pressable className="active:opacity-70 items-center justify-center bg-primary rounded-2xl p-4 w-full">
-              <Text className="text-white text-xl font-bold">{t("sign_in")}</Text>
+              <Text className="text-background text-xl font-bold">{t("sign_in")}</Text>
             </Pressable>
           </Link>
           <Link href="/(auth)/sign-up" asChild>

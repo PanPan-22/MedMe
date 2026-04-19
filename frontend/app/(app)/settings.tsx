@@ -48,6 +48,17 @@ export default function SettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [isDeleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [simpleUi, setSimpleUi] = useState(false);
+
+  const { getValue } = useSecureStorage();
+  useEffect(() => {
+    getValue("simpleUi").then((v) => setSimpleUi(v === "true"));
+  }, []);
+
+  const toggleSimpleUi = async (val: boolean) => {
+    setSimpleUi(val);
+    await save("simpleUi", val ? "true" : "false");
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -138,7 +149,7 @@ export default function SettingsScreen() {
   };
 
   const selectedCls = "bg-primary border-primary";
-  const unselectedCls = "bg-transparent border-primary/30";
+  const unselectedCls = "bg-transparent border-primary/40";
 
   return (
     <ScrollView className="bg-background px-4 pt-4 h-full">
@@ -219,6 +230,33 @@ export default function SettingsScreen() {
       {role === "patient" && (
         <>
           <PairingSection />
+          <View className="border-b border-muted" />
+          <View className="px-2 py-4">
+            <Text className="text-primary font-semibold mb-2 text-xl">{t("simple_ui")}</Text>
+            <Text className="text-primary/60 text-sm mb-4">{t("simple_ui_desc")}</Text>
+            <View className="flex-row gap-4">
+              <Pressable
+                onPress={() => toggleSimpleUi(false)}
+                className={`flex-1 items-center justify-center p-4 rounded-xl border ${
+                  !simpleUi ? selectedCls : unselectedCls
+                }`}
+              >
+                <Text className={!simpleUi ? "text-background font-bold" : "text-primary"}>
+                  {t("off")}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => toggleSimpleUi(true)}
+                className={`flex-1 items-center justify-center p-4 rounded-xl border ${
+                  simpleUi ? selectedCls : unselectedCls
+                }`}
+              >
+                <Text className={simpleUi ? "text-background font-bold" : "text-primary"}>
+                  {t("on")}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
           <View className="border-b border-muted" />
         </>
       )}

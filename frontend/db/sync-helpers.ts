@@ -1,3 +1,4 @@
+import { cancelNotificationsForMed } from "@/hooks/use-notifications";
 import * as SQLite from "expo-sqlite";
 import { enqueue, getLink, newId, nowIso } from "./sync-db";
 
@@ -36,6 +37,7 @@ export interface ScheduleInsertInput {
   start_date: string | null;
   end_date: string | null;
   patient_id: number | null;
+  kind?: string;
 }
 
 export async function insertScheduleAndSync(
@@ -49,13 +51,13 @@ export async function insertScheduleAndSync(
   const result = await db.runAsync(
     `INSERT INTO schedules
       (sync_id, medicine_name, type, count, whenToTake, additional, notification_id,
-       stock, expiration_date, image_uri, repeat_days, start_date, end_date, patient_id, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       stock, expiration_date, image_uri, repeat_days, start_date, end_date, patient_id, updated_at, kind)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       syncId, input.medicine_name, input.type, input.count, input.whenToTake,
       input.additional ?? null, input.notification_id ?? null, input.stock,
       input.expiration_date ?? null, input.image_uri ?? null, input.repeat_days,
-      input.start_date, input.end_date, input.patient_id, updatedAt,
+      input.start_date, input.end_date, input.patient_id, updatedAt, input.kind ?? "medication",
     ],
   );
 
@@ -90,7 +92,7 @@ export async function updateScheduleAndSync(
     medicine_name: string; type: string | null; count: number | null; whenToTake: string | null;
     additional: string | null; notification_id: string | null; stock: number | null;
     expiration_date: string | null; image_uri: string | null; repeat_days: string | null;
-    start_date: string | null; end_date: string | null;
+    start_date: string | null; end_date: string | null; kind: string | null;
   }>(`SELECT * FROM schedules WHERE id = ?`, [localId]);
   if (!existing) return;
 
@@ -114,6 +116,7 @@ export async function updateScheduleAndSync(
     start_date: fields.start_date ?? existing.start_date,
     end_date: fields.end_date ?? existing.end_date,
     patient_id: existing.patient_id,
+    kind: fields.kind ?? existing.kind ?? "medication",
   };
 
   await db.runAsync(
@@ -151,11 +154,14 @@ export async function deleteScheduleAndSync(
   selfRole: Role,
   localId: number,
 ): Promise<void> {
-  const existing = await db.getFirstAsync<{ sync_id: string | null; patient_id: number | null }>(
-    `SELECT sync_id, patient_id FROM schedules WHERE id = ?`,
+  const existing = await db.getFirstAsync<{ sync_id: string | null; patient_id: number | null; notification_id: string | null }>(
+    `SELECT sync_id, patient_id, notification_id FROM schedules WHERE id = ?`,
     [localId],
   );
   if (!existing) return;
+  if (existing.notification_id) {
+    try { await cancelNotificationsForMed(existing.notification_id); } catch { /* already gone */ }
+  }
   await db.runAsync(`DELETE FROM schedules WHERE id = ?`, [localId]);
 
   const syncId = existing.sync_id;
@@ -176,8 +182,9 @@ export interface LogInsertInput {
   scheduled_time: string;
   log_date: string;
   timestamp: string;
-  status: "taken" | "skipped";
+  status: "taken" | "skipped" | "recorded";
   patient_id: number | null;
+  value?: string | null;
 }
 
 export async function insertLogAndSync(
@@ -190,9 +197,9 @@ export async function insertLogAndSync(
   const updatedAt = nowIso();
   await db.runAsync(
     `INSERT INTO medication_logs
-      (sync_id, medication_id, scheduled_time, log_date, timestamp, status, patient_id, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [syncId, input.medication_id, input.scheduled_time, input.log_date, input.timestamp, input.status, input.patient_id, updatedAt],
+      (sync_id, medication_id, scheduled_time, log_date, timestamp, status, patient_id, updated_at, value)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [syncId, input.medication_id, input.scheduled_time, input.log_date, input.timestamp, input.status, input.patient_id, updatedAt, input.value ?? null],
   );
 
   const scheduleRow = await db.getFirstAsync<{ sync_id: string | null }>(
@@ -214,6 +221,7 @@ export async function insertLogAndSync(
         log_date: input.log_date,
         timestamp: input.timestamp,
         status: input.status,
+        value: input.value ?? null,
       },
       sourceUpdatedAt: updatedAt,
     });

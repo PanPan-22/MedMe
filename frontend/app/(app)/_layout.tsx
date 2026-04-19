@@ -1,6 +1,7 @@
 import { useAuth, useUser } from "@clerk/expo";
 import Feather from "@expo/vector-icons/Feather";
 import * as Notifications from "expo-notifications";
+import { useBrandColor } from "@/hooks/use-brand-color";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useSyncEngine } from "@/hooks/use-sync-engine";
 import { useSyncPresence } from "@/hooks/use-sync-presence";
@@ -13,13 +14,14 @@ function AppHeader({ displayName }: { displayName: string }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const isSettings = pathname === "/settings";
+  const { background } = useBrandColor();
   return (
     <View
       className="w-full flex-row items-center justify-between px-4 pb-4 bg-primary"
       style={{ paddingTop: insets.top + 12 }}
     >
       <Text
-        className="text-white text-xl font-semibold flex-1 mr-4"
+        className="text-background text-xl font-semibold flex-1 mr-4"
         numberOfLines={1}
         maxFontSizeMultiplier={1.2}
       >
@@ -28,7 +30,7 @@ function AppHeader({ displayName }: { displayName: string }) {
       {!isSettings && (
         <Link href="/settings" push asChild>
           <Pressable hitSlop={16}>
-            <Feather name="settings" size={24} color="white" />
+            <Feather name="settings" size={24} color={background} />
           </Pressable>
         </Link>
       )}

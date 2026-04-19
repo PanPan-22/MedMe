@@ -2,6 +2,7 @@ import { ConfirmModal } from "@/components/confirm-modal";
 import { Medication } from "@/components/local-db";
 import { useToast } from "@/context/toast-context";
 import { deleteScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
+import { useBrandColor } from "@/hooks/use-brand-color";
 import { cancelNotificationsForMed, scheduleNotificationsForMed } from "@/hooks/use-notifications";
 import { toLocalISODate } from "@/lib/date";
 import { uploadMedImage } from "@/lib/upload";
@@ -33,7 +34,7 @@ const TYPE_KEYS: Record<string, string> = {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <View className="bg-card rounded-2xl border border-primary/10 mb-4 overflow-hidden">
+    <View className="bg-card rounded-2xl border border-primary/20 mb-4 overflow-hidden">
       {children}
     </View>
   );
@@ -54,6 +55,7 @@ export default function MedicineDetailScreen() {
   const { user } = useUser();
   const role = (user?.unsafeMetadata as any)?.role as "patient" | "caretaker" | undefined;
   const { colors } = useTheme();
+  const { primary: brandColor } = useBrandColor();
   const { t } = useTranslation();
   const { showToast } = useToast();
 
@@ -264,8 +266,8 @@ export default function MedicineDetailScreen() {
                 />
               ) : (
                 <View className="items-center gap-2">
-                  <Ionicons name="camera-outline" size={40} color={colors.primary} />
-                  <Text className="text-primary text-sm">Tap to add photo</Text>
+                  <Ionicons name="camera-outline" size={40} color={brandColor} />
+                  <Text className="text-primary text-sm">{t("tap_to_add_photo")}</Text>
                 </View>
               )}
             </Pressable>
@@ -276,7 +278,7 @@ export default function MedicineDetailScreen() {
             )}
           </View>
         ) : imageUri ? (
-          <View className="rounded-2xl overflow-hidden bg-card mb-4 border border-primary/10 items-center justify-center" style={{ aspectRatio: 4 / 3 }}>
+          <View className="rounded-2xl overflow-hidden bg-card mb-4 border border-primary/20 items-center justify-center" style={{ aspectRatio: 4 / 3 }}>
             <Image
               source={{ uri: imageUri }}
               style={{ width: "100%", height: "100%" }}
@@ -310,7 +312,7 @@ export default function MedicineDetailScreen() {
                     onPress={() => setMedType(mType)}
                     className={`px-4 py-2 rounded-full border ${medType === mType ? "bg-primary border-primary" : "bg-card border-muted"}`}
                   >
-                    <Text className={medType === mType ? "text-white font-semibold" : "text-gray-500"}>
+                    <Text className={medType === mType ? "text-background font-semibold" : "text-primary/60"}>
                       {t(TYPE_KEYS[mType])}
                     </Text>
                   </Pressable>
@@ -385,7 +387,7 @@ export default function MedicineDetailScreen() {
                       }}
                       className={`w-10 h-10 rounded-full items-center justify-center ${isSelected ? "bg-primary border-2 border-primary" : "bg-card border border-muted"}`}
                     >
-                      <Text className={`text-xs font-bold ${isSelected ? "text-white" : "text-gray-400"}`}>
+                      <Text className={`text-xs font-bold ${isSelected ? "text-background" : "text-primary/60"}`}>
                         {t(DAY_KEYS[day])}
                       </Text>
                     </Pressable>
@@ -405,7 +407,7 @@ export default function MedicineDetailScreen() {
               </View>
               <View className="flex-1 gap-1">
                 <Text className="text-sm font-semibold text-primary">{t("end_date")}</Text>
-                <View className="bg-primary/5 border border-primary/30 rounded-xl py-3 px-3">
+                <View className="bg-primary/5 border border-primary/40 rounded-xl py-3 px-3">
                   <Text className="text-primary/60 text-xs text-center">{formatDate(calcEndDate(startDate, stock, amount, times.length))}</Text>
                 </View>
               </View>

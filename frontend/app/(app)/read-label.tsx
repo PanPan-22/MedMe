@@ -1,3 +1,4 @@
+import { useBrandColor } from "@/hooks/use-brand-color";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { GoogleGenAI } from "@google/genai";
 import { useTheme } from "@react-navigation/native";
@@ -118,6 +119,7 @@ const scanWithGoogleVision = async (uri: string) => {
 export default function MedicineScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { primary: brandColor } = useBrandColor();
   const [image, setImage] = useState("");
   const [scannedText, setScannedText] = useState("");
   const [loading1, setLoading1] = useState(false); // Scanning
@@ -191,12 +193,17 @@ export default function MedicineScreen() {
         </Pressable>
         <Text className="text-2xl font-bold text-primary">{t("read_label")}</Text>
       </View>
-      <Pressable onPress={handleImagePickerSheet}>
-        <View className="border border-muted p-2 w-full items-center rounded-lg h-[25rem]">
+      <View className="gap-2 px-2 mb-4">
+        <Text className="text-base font-semibold text-primary">{t("medicine_image")}</Text>
+        <Pressable
+          onPress={handleImagePickerSheet}
+          className="border-2 border-dashed border-primary rounded-2xl overflow-hidden bg-card items-center justify-center"
+          style={{ aspectRatio: 4 / 3 }}
+        >
           {image === "" ? (
-            <View className="flex-1 flex-col items-center justify-center gap-4 w-full">
-              <Ionicons name="add-circle-outline" size={64} color={"gray"} />
-              <Text className="text-gray-500 text-2xl">{t("add_image")}</Text>
+            <View className="items-center gap-2">
+              <Ionicons name="camera-outline" size={40} color={brandColor} />
+              <Text className="text-primary text-sm">{t("tap_to_add_photo")}</Text>
             </View>
           ) : (
             <Image
@@ -205,18 +212,15 @@ export default function MedicineScreen() {
               resizeMode="contain"
             />
           )}
-        </View>
-      </Pressable>
-      <View className="h-4"></View>
+        </Pressable>
+        {image !== "" && (
+          <Pressable onPress={() => setImage("")} className="active:opacity-70 self-end bg-red-500 px-4 py-2 rounded-xl">
+            <Text className="text-white font-semibold text-sm">{t("clear")}</Text>
+          </Pressable>
+        )}
+      </View>
       {image !== "" && (
         <>
-          <Pressable
-            className="active:opacity-30 flex-row items-center justify-center gap-4 bg-card border border-primary rounded-xl p-4 w-full"
-            onPress={handleImagePickerSheet}
-          >
-            <Text className="text-2xl text-primary">{t("pick_other_image")}</Text>
-          </Pressable>
-          <View className="h-4"></View>
           <Pressable
             className="disabled:opacity-50 active:opacity-50 flex-row items-center justify-center gap-4 bg-primary rounded-xl p-4 w-full"
             disabled={loading1 || loading2} // Disable button if either loading state is true
@@ -225,7 +229,7 @@ export default function MedicineScreen() {
               handleCompleteScan();
             }}
           >
-            <Text className="text-2xl text-white">
+            <Text className="text-2xl text-background">
               {loading1
                 ? t("scanning")
                 : loading2

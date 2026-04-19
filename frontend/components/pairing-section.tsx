@@ -3,6 +3,7 @@ import { useToast } from "@/context/toast-context";
 import { createPairingCode, deletePairingCode, readUserProfile, redeemPairingCode, removePatientLink } from "@/db/firestore-ops";
 import { getLink } from "@/db/sync-db";
 import { PatientLink } from "@/db/sync-types";
+import { useBrandColor } from "@/hooks/use-brand-color";
 import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSQLiteContext } from "expo-sqlite";
@@ -22,6 +23,7 @@ export function PairingSection() {
   const db = useSQLiteContext();
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const { background } = useBrandColor();
 
   const [link, setLink] = useState<PatientLink | null>(null);
   const [caretakerName, setCaretakerName] = useState<string | null>(null);
@@ -127,17 +129,17 @@ export function PairingSection() {
       ) : code && expiresAt ? (
         <View className="gap-3">
           <View className="bg-primary rounded-2xl p-5 items-center">
-            <Text className="text-white/70 text-xs mb-1">{t("pairing_code_label")}</Text>
-            <Text className="text-white text-5xl font-bold tracking-widest" maxFontSizeMultiplier={1.2}>
+            <Text className="text-background/70 text-xs mb-1">{t("pairing_code_label")}</Text>
+            <Text className="text-background text-5xl font-bold tracking-widest" maxFontSizeMultiplier={1.2}>
               {code}
             </Text>
-            <Text className="text-white/70 text-xs mt-2">
+            <Text className="text-background/70 text-xs mt-2">
               {t("code_expires_in", { time: formatRemaining(remaining) })}
             </Text>
           </View>
           <Text className="text-primary/60 text-xs text-center">{t("pairing_instructions")}</Text>
           <Pressable
-            className="active:opacity-70 items-center justify-center border border-primary/30 rounded-2xl p-3"
+            className="active:opacity-70 items-center justify-center border border-primary/40 rounded-2xl p-3"
             onPress={cancelCode}
           >
             <Text className="text-primary font-semibold">{t("cancel")}</Text>
@@ -152,11 +154,11 @@ export function PairingSection() {
             disabled={generating}
           >
             {generating ? (
-              <ActivityIndicator color="white" />
+              <ActivityIndicator color={background} />
             ) : (
               <>
-                <Ionicons name="link-outline" size={18} color="white" />
-                <Text className="text-white font-semibold">{t("generate_code")}</Text>
+                <Ionicons name="link-outline" size={18} color={background} />
+                <Text className="text-background font-semibold">{t("generate_code")}</Text>
               </>
             )}
           </Pressable>
@@ -181,6 +183,7 @@ export function CaretakerLinkSection() {
   const db = useSQLiteContext();
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const { background } = useBrandColor();
 
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -240,11 +243,11 @@ export function CaretakerLinkSection() {
         disabled={verifying}
       >
         {verifying ? (
-          <ActivityIndicator color="white" />
+          <ActivityIndicator color={background} />
         ) : (
           <>
-            <Ionicons name="link-outline" size={18} color="white" />
-            <Text className="text-white font-semibold">{t("verify")}</Text>
+            <Ionicons name="link-outline" size={18} color={background} />
+            <Text className="text-background font-semibold">{t("verify")}</Text>
           </>
         )}
       </Pressable>

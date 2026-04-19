@@ -1,4 +1,5 @@
 import LanguageToggle from "@/components/language-toggle";
+import { useBrandColor } from "@/hooks/use-brand-color";
 import { useClerk, useSignUp } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
@@ -30,6 +31,7 @@ export default function SignUpScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const db = useSQLiteContext();
+  const { background } = useBrandColor();
 
   const [role, setRole] = useState<Role>("caretaker");
   const [firstName, setFirstName] = useState("");
@@ -109,8 +111,8 @@ export default function SignUpScreen() {
                       selected ? "bg-primary border-primary" : "bg-card border-muted"
                     }`}
                   >
-                    <Ionicons name={icon as any} size={30} color={selected ? "white" : "#888"} />
-                    <Text className={`mt-2 font-semibold ${selected ? "text-white" : "text-gray-500"}`}>
+                    <Ionicons name={icon as any} size={30} color={selected ? background : "#888"} />
+                    <Text className={`mt-2 font-semibold ${selected ? "text-background" : "text-primary/60"}`}>
                       {t(key)}
                     </Text>
                   </Pressable>
@@ -213,8 +215,8 @@ export default function SignUpScreen() {
             disabled={loading}
           >
             {loading
-              ? <ActivityIndicator color="white" />
-              : <Text className="text-white text-xl font-bold">{t("create_account")}</Text>
+              ? <ActivityIndicator color={background} />
+              : <Text className="text-background text-xl font-bold">{t("create_account")}</Text>
             }
           </Pressable>
         </View>

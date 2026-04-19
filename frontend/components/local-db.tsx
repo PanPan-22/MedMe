@@ -20,6 +20,7 @@ export interface Medication {
   end_date: string;
   patient_id?: number | null;
   notification_id?: string;
+  kind?: string;
 }
 
 async function openDatabase(): Promise<SQLiteDatabase> {

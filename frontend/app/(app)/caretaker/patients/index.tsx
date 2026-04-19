@@ -289,7 +289,7 @@ export default function PatientListScreen() {
                 <TextInput value={confirmText} onChangeText={setConfirmText} placeholder='Type "Confirm" / "ยืนยัน"' placeholderTextColor="#888888" className="text-primary bg-card border border-primary rounded-2xl px-4 py-3 text-base" />
               </View>
               <View className="flex-row gap-3">
-                <Pressable className="active:opacity-70 flex-1 items-center justify-center border border-primary/30 rounded-2xl p-4" onPress={() => { setShowDeleteModal(false); setConfirmText(""); }}>
+                <Pressable className="active:opacity-70 flex-1 items-center justify-center border border-primary/40 rounded-2xl p-4" onPress={() => { setShowDeleteModal(false); setConfirmText(""); }}>
                   <Text className="text-primary font-semibold">{t("cancel")}</Text>
                 </Pressable>
                 <Pressable className={`flex-1 active:opacity-70 items-center justify-center rounded-2xl p-4 ${canDelete ? "bg-red-500" : "bg-red-200"}`} onPress={deleteSelected} disabled={!canDelete}>

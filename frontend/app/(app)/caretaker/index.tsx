@@ -1,4 +1,5 @@
 import { Medication } from "@/components/local-db";
+import { useBrandColor } from "@/hooks/use-brand-color";
 import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
@@ -31,6 +32,7 @@ function getNextAlarm(meds: Medication[]): { time: string } | null {
 export default function CaretakerHome() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { background } = useBrandColor();
   const db = useSQLiteContext();
   const { user } = useUser();
   const { width } = useWindowDimensions();
@@ -74,12 +76,19 @@ export default function CaretakerHome() {
         ListHeaderComponent={
           <>
             {/* Upcoming alarm */}
-            <View className="bg-primary rounded-2xl p-5 mb-5">
-              <Text className="text-white/70 text-sm font-medium mb-1">{t("next_med")}</Text>
-              {nextAlarm ? (
-                <Text className="text-white text-4xl font-bold">{nextAlarm.time}</Text>
-              ) : (
-                <Text className="text-white/60 text-base">{t("no_medications")}</Text>
+            <View className="flex-row items-center justify-between mb-5">
+              <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>{t("next_med")}</Text>
+              {nextAlarm ? (() => {
+                const hour = parseInt(nextAlarm.time.split(":")[0]);
+                const isNight = hour < 6 || hour >= 18;
+                return (
+                  <View className="flex-row items-center gap-2 bg-yellow-100 rounded-full px-4 py-1.5 border border-yellow-300">
+                    <Ionicons name={isNight ? "moon" : "sunny"} size={20} color={isNight ? "#3b82f6" : "#f59e0b"} />
+                    <Text className="text-primary font-bold text-2xl">{nextAlarm.time}</Text>
+                  </View>
+                );
+              })() : (
+                <Text className="text-primary/50">{t("no_medications")}</Text>
               )}
             </View>
 
@@ -97,7 +106,7 @@ export default function CaretakerHome() {
                     setActiveIndex(Math.round(e.nativeEvent.contentOffset.x / cardWidth));
                   }}
                   renderItem={({ item }) => (
-                    <View style={{ width: cardWidth }} className="bg-card border border-primary/10 rounded-2xl overflow-hidden">
+                    <View style={{ width: cardWidth }} className="bg-card border border-primary/20 rounded-2xl overflow-hidden">
                       {/* Patient header */}
                       <View className="flex-row items-center justify-between px-4 py-4">
                         <View className="flex-row items-center gap-3 flex-1">
@@ -120,7 +129,7 @@ export default function CaretakerHome() {
 
                       {/* Medication list */}
                       {item.medsAtAlarm.map((med, i) => (
-                        <View key={i} className="flex-row items-center justify-between border-t border-primary/10 px-4 py-3">
+                        <View key={i} className="flex-row items-center justify-between border-t border-primary/20 px-4 py-3">
                           <View className="flex-1 mr-3">
                             <Text className="text-primary font-semibold text-sm" numberOfLines={1}>{med.medicine_name}</Text>
                             <Text className="text-primary/50 text-xs">{t("amount")}: {med.count} {med.type}</Text>
@@ -154,8 +163,8 @@ export default function CaretakerHome() {
           <View className="gap-3">
             <Link href="/caretaker/patients" push asChild>
               <Pressable className="active:opacity-70 flex-row items-center justify-center gap-3 bg-primary rounded-xl p-4 w-full">
-                <Ionicons name="people-outline" size={28} color="white" />
-                <Text className="text-white text-xl font-semibold">{t("patients")}</Text>
+                <Ionicons name="people-outline" size={28} color={background} />
+                <Text className="text-background text-xl font-semibold">{t("patients")}</Text>
               </Pressable>
             </Link>
             <Link href="/debug-notifications" push asChild>

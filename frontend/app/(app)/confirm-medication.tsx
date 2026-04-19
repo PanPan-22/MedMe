@@ -1,5 +1,6 @@
 import { useToast } from "@/context/toast-context";
 import { insertScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
+import { useBrandColor } from "@/hooks/use-brand-color";
 import { scheduleNotificationsForMed } from "@/hooks/use-notifications";
 import { toLocalISODate } from "@/lib/date";
 import { uploadMedImage } from "@/lib/upload";
@@ -27,6 +28,7 @@ const DAY_KEYS: Record<string, string> = {
 export default function ConfirmMedicationScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { primary: brandColor } = useBrandColor();
   const { showToast } = useToast();
   const db = useSQLiteContext();
   const { user } = useUser();
@@ -116,8 +118,8 @@ export default function ConfirmMedicationScreen() {
             <Image source={{ uri: imageUri }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
           ) : (
             <View className="items-center gap-2">
-              <Ionicons name="camera-outline" size={36} color={colors.primary} />
-              <Text className="text-primary text-sm">Tap to add photo</Text>
+              <Ionicons name="camera-outline" size={36} color={brandColor} />
+              <Text className="text-primary text-sm">{t("tap_to_add_photo")}</Text>
             </View>
           )}
         </Pressable>
@@ -146,7 +148,7 @@ export default function ConfirmMedicationScreen() {
               onPress={() => setMedType(mType)}
               className={`px-4 py-2 rounded-full border ${medType === mType ? "bg-primary border-primary" : "bg-card border-muted"}`}
             >
-              <Text className={medType === mType ? "text-white font-semibold" : "text-gray-500"}>{mType}</Text>
+              <Text className={medType === mType ? "text-background font-semibold" : "text-primary/60"}>{mType}</Text>
             </Pressable>
           ))}
         </View>
@@ -196,7 +198,7 @@ export default function ConfirmMedicationScreen() {
                 }}
                 className={`w-10 h-10 rounded-full items-center justify-center ${isSelected ? "bg-primary border-2 border-primary" : "bg-card border border-muted"}`}
               >
-                <Text className={`text-xs font-bold ${isSelected ? "text-white" : "text-gray-400"}`}>
+                <Text className={`text-xs font-bold ${isSelected ? "text-background" : "text-primary/60"}`}>
                   {t(DAY_KEYS[day])}
                 </Text>
               </Pressable>
@@ -315,7 +317,7 @@ export default function ConfirmMedicationScreen() {
             }
           }}
         >
-          <Text className="text-white text-xl font-bold">{t("save")}</Text>
+          <Text className="text-background text-xl font-bold">{t("save")}</Text>
         </Pressable>
       </View>
 

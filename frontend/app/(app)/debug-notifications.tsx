@@ -46,7 +46,7 @@ export default function DebugNotificationsScreen() {
           onPress={refresh}
           className="active:opacity-70 bg-primary rounded-xl p-3 items-center flex-1"
         >
-          <Text className="text-white font-semibold">{t("refresh")}</Text>
+          <Text className="text-background font-semibold">{t("refresh")}</Text>
         </Pressable>
         <Pressable
           onPress={async () => {
@@ -63,7 +63,7 @@ export default function DebugNotificationsScreen() {
           <Text className="text-center text-primary/40 mt-10">{t("no_scheduled_notifications")}</Text>
         ) : (
           notifs.map((n) => (
-            <View key={n.id} className="bg-card border border-primary/10 rounded-2xl p-4 gap-1">
+            <View key={n.id} className="bg-card border border-primary/20 rounded-2xl p-4 gap-1">
               <Text className="text-xs text-primary/40 font-mono" numberOfLines={1}>{n.id}</Text>
               <Text className="text-primary font-bold text-base">{n.title ?? t("no_title_fallback")}</Text>
               <Text className="text-primary/70 text-sm">{n.body ?? t("no_body_fallback")}</Text>

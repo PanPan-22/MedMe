@@ -1,3 +1,4 @@
+import { useBrandColor } from "@/hooks/use-brand-color";
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -11,6 +12,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 export default function AddMedicineScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { background } = useBrandColor();
   const { patientId, patientName } = useLocalSearchParams<{ patientId?: string; patientName?: string }>();
   const [isConnected, setIsConnected] = useState<boolean | null>(true);
 
@@ -40,13 +42,13 @@ export default function AddMedicineScreen() {
             isConnected ? "bg-primary" : "bg-gray-400"
           }`}
         >
-          <Feather name="camera" size={64} color="white" />
+          <Feather name="camera" size={64} color={background} />
           <View className="items-center gap-1">
-            <Text className="text-white text-3xl font-semibold" maxFontSizeMultiplier={1.2}>
+            <Text className="text-background text-3xl font-semibold" maxFontSizeMultiplier={1.2}>
               {t("read_label")}
             </Text>
             {!isConnected && (
-              <Text className="text-white text-sm opacity-80" maxFontSizeMultiplier={1.2}>
+              <Text className="text-background text-sm opacity-80" maxFontSizeMultiplier={1.2}>
                 {t("no_internet_connection")}
               </Text>
             )}
@@ -56,8 +58,8 @@ export default function AddMedicineScreen() {
           onPress={() => router.push({ pathname: "/manual-add", params: extraParams })}
           className="flex-column items-center justify-center bg-primary w-full rounded-3xl py-10 gap-3"
         >
-          <FontAwesome name="calendar" size={64} color="white" />
-          <Text className="text-white text-3xl font-semibold" maxFontSizeMultiplier={1.2}>
+          <FontAwesome name="calendar" size={64} color={background} />
+          <Text className="text-background text-3xl font-semibold" maxFontSizeMultiplier={1.2}>
             {t("fill_field")}
           </Text>
         </Pressable>

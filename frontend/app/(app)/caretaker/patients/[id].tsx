@@ -1,5 +1,5 @@
 import { Medication } from "@/components/local-db";
-import TimeComponent from "@/components/time-component";
+import { useBrandColor } from "@/hooks/use-brand-color";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
 import {
@@ -54,6 +54,7 @@ export default function PatientDetailScreen() {
   }>();
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { primary: brandColor, background } = useBrandColor();
   const db = useSQLiteContext();
   const { width } = useWindowDimensions();
   const cardWidth = width - 32;
@@ -135,34 +136,62 @@ export default function PatientDetailScreen() {
                       Math.round(e.nativeEvent.contentOffset.x / cardWidth),
                     );
                   }}
-                  renderItem={({ item }) => (
-                    <View
-                      style={{ width: cardWidth }}
-                      className="bg-primary rounded-2xl p-6 gap-3"
-                    >
-                      <TimeComponent time={item.time} />
-                      <View className="gap-1">
-                        {item.meds.map((med) => (
-                          <View
-                            key={med.id}
-                            className="flex-row items-center gap-2"
-                          >
+                  renderItem={({ item }) => {
+                    const hour = parseInt(item.time.split(":")[0]);
+                    const isNight = hour < 6 || hour >= 18;
+                    return (
+                      <View
+                        style={{ width: cardWidth }}
+                        className="bg-card border border-primary/20 rounded-2xl overflow-hidden"
+                      >
+                        {/* Time pill */}
+                        <View className="items-center pt-4">
+                          <View className="flex-row items-center gap-2 bg-yellow-100 rounded-full px-4 py-1">
                             <Ionicons
-                              name="ellipse"
-                              size={8}
-                              color="rgba(255,255,255,0.7)"
+                              name={isNight ? "moon" : "sunny"}
+                              size={20}
+                              color={isNight ? "#3b82f6" : "#f59e0b"}
                             />
-                            <Text
-                              className="text-white/90 text-base"
-                              numberOfLines={1}
-                            >
-                              {med.medicine_name}
-                            </Text>
+                            <Text className="text-primary font-bold text-2xl">{item.time}</Text>
                           </View>
-                        ))}
+                        </View>
+
+                        {/* Med rows */}
+                        <View className="px-2 pt-3 pb-2">
+                          {item.meds.map((med) => {
+                            const kind = med.kind ?? "medication";
+                            return (
+                              <View key={med.id} className="flex-row items-center justify-between border-t border-primary/10 px-2 py-3">
+                                <View className="flex-1 mr-3">
+                                  <Text className="text-primary font-bold text-base" numberOfLines={1}>{med.medicine_name}</Text>
+                                  {kind === "medication" && (
+                                    <Text className="text-primary/60 text-xs">{t("amount")}: {med.count} {med.type}</Text>
+                                  )}
+                                </View>
+                                {kind === "medication" ? (
+                                  med.image_uri ? (
+                                    <Image source={{ uri: med.image_uri }} className="w-11 h-11 rounded-xl" resizeMode="cover" />
+                                  ) : (
+                                    <View className="w-11 h-11 rounded-xl bg-primary/10 items-center justify-center">
+                                      <Ionicons name="medical-outline" size={22} color={brandColor} />
+                                    </View>
+                                  )
+                                ) : (
+                                  <View className="w-11 h-11 rounded-xl items-center justify-center">
+                                    <Ionicons
+                                      name={kind === "blood_pressure" ? "heart-outline" : "water-outline"}
+                                      size={26}
+                                      color="#dc2626"
+                                    />
+                                  </View>
+                                )}
+                              </View>
+                            );
+                          })}
+                        </View>
                       </View>
-                    </View>
-                  )}
+                    );
+                  }}
                 />
                 {slots.length > 1 && (
                   <View className="flex-row justify-center gap-2 mt-3">
@@ -193,8 +222,8 @@ export default function PatientDetailScreen() {
                 })
               }
             >
-              <Ionicons name="medical-outline" size={24} color="white" />
-              <Text className="text-white text-xl font-semibold">
+              <Ionicons name="medical-outline" size={24} color={background} />
+              <Text className="text-background text-xl font-semibold">
                 {t("medicine_management")}
               </Text>
             </Pressable>
@@ -207,8 +236,8 @@ export default function PatientDetailScreen() {
                 })
               }
             >
-              <Ionicons name="clipboard-outline" size={24} color="white" />
-              <Text className="text-white text-xl font-semibold">
+              <Ionicons name="clipboard-outline" size={24} color={background} />
+              <Text className="text-background text-xl font-semibold">
                 {t("record")}
               </Text>
             </Pressable>

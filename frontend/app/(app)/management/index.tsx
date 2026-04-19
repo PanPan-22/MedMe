@@ -4,20 +4,28 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
 import { router, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
+import { useColorScheme } from "nativewind";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FlatList,
   Image,
+  Modal,
   Pressable,
   Text,
   TextInput,
   View,
 } from "react-native";
 
+const BRAND = { light: "#062d13", dark: "#86efac" };
+const BG = { light: "#f2fbf5", dark: "#0a1410" };
+
 export default function ManagementScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { colorScheme } = useColorScheme();
+  const brandColor = colorScheme === "dark" ? BRAND.dark : BRAND.light;
+  const bgColor = colorScheme === "dark" ? BG.dark : BG.light;
   const db = useSQLiteContext();
   const { patientId, patientName } = useLocalSearchParams<{ patientId?: string; patientName?: string }>();
 
@@ -26,6 +34,7 @@ export default function ManagementScreen() {
 
   const [meds, setMeds] = useState<Medication[]>([]);
   const [text, setText] = useState("");
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -67,9 +76,21 @@ export default function ManagementScreen() {
     searchMedicine(query);
   };
 
-  const addScheduleHref = pid !== null
-    ? { pathname: "/add-schedule" as const, params: { patientId: pid, patientName: patientName ?? "" } }
-    : { pathname: "/add-schedule" as const };
+  const patientParams = pid !== null ? { patientId: pid, patientName: patientName ?? "" } : {};
+  const goToAddMedication = () => {
+    setShowAddMenu(false);
+    router.push({ pathname: "/add-schedule", params: patientParams });
+  };
+  const goToAddMeasurement = (kind: "blood_pressure" | "blood_sugar") => {
+    setShowAddMenu(false);
+    router.push({ pathname: "/add-measurement", params: { ...patientParams, kind } });
+  };
+
+  const iconForKind = (kind?: string) => {
+    if (kind === "blood_pressure") return "heart-outline" as const;
+    if (kind === "blood_sugar") return "water-outline" as const;
+    return "medical-outline" as const;
+  };
 
   return (
     <View className="bg-background pt-4 px-4 h-full">
@@ -82,7 +103,7 @@ export default function ManagementScreen() {
           </Pressable>
           <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>{title}</Text>
         </View>
-        <Pressable onPress={() => router.push(addScheduleHref)}>
+        <Pressable onPress={() => setShowAddMenu(true)}>
           <Ionicons name="add-circle-outline" size={32} color={colors.text} />
         </Pressable>
       </View>
@@ -108,10 +129,15 @@ export default function ManagementScreen() {
           renderItem={({ item }) => (
             <Pressable
               className="p-2 border-b w-full border-muted flex-row items-center justify-between active:opacity-70"
-              onPress={() => router.push({
-                pathname: `/management/${item.id}`,
-                params: pid !== null ? { patientId: pid, patientName: patientName ?? "" } : {},
-              })}
+              onPress={() => {
+                const isMeasurement = item.kind && item.kind !== "medication";
+                router.push({
+                  pathname: isMeasurement ? "/measurement/[id]" : "/management/[id]",
+                  params: pid !== null
+                    ? { id: item.id, patientId: pid, patientName: patientName ?? "" }
+                    : { id: item.id },
+                });
+              }}
             >
               <Text className="text-xl text-primary truncate w-4/5" numberOfLines={1}>
                 {item.medicine_name}
@@ -124,7 +150,7 @@ export default function ManagementScreen() {
                 />
               ) : (
                 <View style={{ width: 50, height: 50, borderRadius: 8 }} className="bg-primary/10 items-center justify-center">
-                  <Ionicons name="medical-outline" size={24} color={colors.primary} />
+                  <Ionicons name={iconForKind(item.kind)} size={24} color={brandColor} />
                 </View>
               )}
             </Pressable>
@@ -132,6 +158,25 @@ export default function ManagementScreen() {
         />
       </View>
 
+      <Modal visible={showAddMenu} transparent animationType="fade" onRequestClose={() => setShowAddMenu(false)}>
+        <Pressable className="flex-1 bg-black/60 justify-center items-center px-6" onPress={() => setShowAddMenu(false)}>
+          <Pressable className="bg-background rounded-3xl p-6 w-full gap-3" onPress={() => {}}>
+            <Text className="text-xl font-bold text-primary mb-2">{t("add_schedule")}</Text>
+            <Pressable className="active:opacity-70 flex-row items-center gap-3 bg-primary-soft rounded-2xl p-4 w-full" onPress={goToAddMedication}>
+              <Ionicons name="medical-outline" size={22} color={bgColor} />
+              <Text className="text-background font-bold text-base">{t("add_medication")}</Text>
+            </Pressable>
+            <Pressable className="active:opacity-70 flex-row items-center gap-3 bg-primary-soft rounded-2xl p-4 w-full" onPress={() => goToAddMeasurement("blood_pressure")}>
+              <Ionicons name="heart-outline" size={22} color={bgColor} />
+              <Text className="text-background font-bold text-base">{t("measurement_bp")}</Text>
+            </Pressable>
+            <Pressable className="active:opacity-70 flex-row items-center gap-3 bg-primary-soft rounded-2xl p-4 w-full" onPress={() => goToAddMeasurement("blood_sugar")}>
+              <Ionicons name="water-outline" size={22} color={bgColor} />
+              <Text className="text-background font-bold text-base">{t("measurement_bs")}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

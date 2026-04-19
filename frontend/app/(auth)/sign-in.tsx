@@ -1,4 +1,5 @@
 import LanguageToggle from "@/components/language-toggle";
+import { useBrandColor } from "@/hooks/use-brand-color";
 import { useClerk, useSignIn } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@react-navigation/native";
@@ -22,6 +23,7 @@ export default function SignInScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { background } = useBrandColor();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -106,8 +108,8 @@ export default function SignInScreen() {
           disabled={loading}
         >
           {loading
-            ? <ActivityIndicator color="white" />
-            : <Text className="text-white text-xl font-bold">{t("sign_in")}</Text>
+            ? <ActivityIndicator color={background} />
+            : <Text className="text-background text-xl font-bold">{t("sign_in")}</Text>
           }
         </Pressable>
       </View>

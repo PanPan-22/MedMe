@@ -11,6 +11,7 @@ module.exports = {
     extend: {
       colors: {
         primary: "var(--color-primary)",
+        "primary-soft": "var(--color-primary-soft)",
         background: "var(--color-background)",
         card: "var(--color-card)",
         muted: "var(--color-muted)",
