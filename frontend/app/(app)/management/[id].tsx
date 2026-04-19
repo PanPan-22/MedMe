@@ -8,7 +8,6 @@ import { toLocalISODate } from "@/lib/date";
 import { uploadMedImage } from "@/lib/upload";
 import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "@react-navigation/native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
@@ -54,7 +53,6 @@ export default function MedicineDetailScreen() {
   const db = useSQLiteContext();
   const { user } = useUser();
   const role = (user?.unsafeMetadata as any)?.role as "patient" | "caretaker" | undefined;
-  const { colors } = useTheme();
   const { primary: brandColor } = useBrandColor();
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -218,7 +216,7 @@ export default function MedicineDetailScreen() {
   }
 
   return (
-    <ScrollView className="bg-background flex-1">
+    <ScrollView className="bg-background flex-1" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       <Stack.Screen options={{ headerShown: true, title: t("detail") }} />
 
       <View className="px-4 pt-4 pb-12">
@@ -226,7 +224,7 @@ export default function MedicineDetailScreen() {
         <View className="flex-row items-center justify-between p-2 mb-4 w-full">
           <View className="flex-row items-center gap-4 flex-1 mr-4">
             <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-              <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+              <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
             </Pressable>
             <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>
               {med.medicine_name}
@@ -244,7 +242,7 @@ export default function MedicineDetailScreen() {
             </View>
           ) : (
             <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => setEditing(true)}>
-              <Ionicons name="create-outline" size={28} color={colors.text} />
+              <Ionicons name="create-outline" size={28} color={brandColor} />
             </Pressable>
           )}
         </View>
@@ -364,7 +362,7 @@ export default function MedicineDetailScreen() {
                   className="flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
                   onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
                 >
-                  <Ionicons name="add" size={16} color={colors.primary} />
+                  <Ionicons name="add" size={16} color={brandColor} />
                   <Text className="text-primary font-medium ml-1 text-sm">{t("add_time")}</Text>
                 </Pressable>
               </View>

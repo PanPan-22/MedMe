@@ -1,6 +1,8 @@
-import MedMeLogo from "@/assets/images/white_medme.svg";
+import MedMeLogoBlack from "@/assets/images/black_medme.svg";
+import MedMeLogoWhite from "@/assets/images/white_medme.svg";
 import LanguageToggle from "@/components/language-toggle";
 import { Link } from "expo-router";
+import { useColorScheme } from "nativewind";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,6 +10,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function WelcomeScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { colorScheme } = useColorScheme();
+  const MedMeLogo = colorScheme === "dark" ? MedMeLogoBlack : MedMeLogoWhite;
 
   return (
     <View className="flex-1 bg-background px-6" style={{ paddingTop: insets.top + 12 }}>

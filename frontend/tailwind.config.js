@@ -10,11 +10,11 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: "var(--color-primary)",
-        "primary-soft": "var(--color-primary-soft)",
-        background: "var(--color-background)",
-        card: "var(--color-card)",
-        muted: "var(--color-muted)",
+        primary: "rgb(var(--color-primary) / <alpha-value>)",
+        "primary-soft": "rgb(var(--color-primary-soft) / <alpha-value>)",
+        background: "rgb(var(--color-background) / <alpha-value>)",
+        card: "rgb(var(--color-card) / <alpha-value>)",
+        muted: "rgb(var(--color-muted) / <alpha-value>)",
       },
     },
   },

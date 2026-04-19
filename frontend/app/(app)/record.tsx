@@ -1,7 +1,6 @@
 import { useBrandColor } from "@/hooks/use-brand-color";
 import { toLocalISODate } from "@/lib/date";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "@react-navigation/native";
 import { router, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
@@ -108,7 +107,6 @@ function StatusBadge({ status }: { status: "all_taken" | "all_skipped" | "partia
 
 export default function RecordScreen() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
   const db = useSQLiteContext();
   const { patientId, patientName } = useLocalSearchParams<{ patientId?: string; patientName?: string }>();
   const pid = patientId ? parseInt(patientId) : null;
@@ -157,7 +155,7 @@ export default function RecordScreen() {
         {/* Header row */}
         <View className="flex-row items-center gap-4 mb-4">
           <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-            <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+            <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
           </Pressable>
           <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>
             {patientName ? `${patientName} — ${t("record")}` : t("record")}

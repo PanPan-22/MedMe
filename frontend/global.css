@@ -6,18 +6,18 @@
 @layer base {
   :root,
   .light {
-    --color-primary: #062d13;
-    --color-primary-soft: #374B3E;
-    --color-background: #f2fbf5;
-    --color-card: #ffffff;
-    --color-muted: #e5e7eb;
+    --color-primary: 6 45 19;
+    --color-primary-soft: 55 75 62;
+    --color-background: 242 251 245;
+    --color-card: 255 255 255;
+    --color-muted: 229 231 235;
   }
 
   .dark {
-    --color-primary: #86efac;
-    --color-primary-soft: #4ade80;
-    --color-background: #0a1410;
-    --color-card: #13231b;
-    --color-muted: #1f2e26;
+    --color-primary: 134 239 172;
+    --color-primary-soft: 74 222 128;
+    --color-background: 10 20 16;
+    --color-card: 19 35 27;
+    --color-muted: 31 46 38;
   }
 }

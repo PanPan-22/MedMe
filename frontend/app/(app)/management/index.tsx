@@ -1,7 +1,6 @@
 import { Medication } from "@/components/local-db";
 import { Feather } from "@expo/vector-icons";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "@react-navigation/native";
 import { router, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useColorScheme } from "nativewind";
@@ -22,7 +21,6 @@ const BG = { light: "#f2fbf5", dark: "#0a1410" };
 
 export default function ManagementScreen() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
   const { colorScheme } = useColorScheme();
   const brandColor = colorScheme === "dark" ? BRAND.dark : BRAND.light;
   const bgColor = colorScheme === "dark" ? BG.dark : BG.light;
@@ -99,17 +97,17 @@ export default function ManagementScreen() {
       <View className="flex-row items-center justify-between p-2 mb-4 w-full">
         <View className="flex-row items-center gap-4 flex-1 mr-2">
           <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-            <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+            <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
           </Pressable>
           <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>{title}</Text>
         </View>
         <Pressable onPress={() => setShowAddMenu(true)}>
-          <Ionicons name="add-circle-outline" size={32} color={colors.text} />
+          <Ionicons name="add-circle-outline" size={32} color={brandColor} />
         </Pressable>
       </View>
 
       <View className="flex-row items-center gap-2 px-3 w-full bg-card border border-muted rounded-full mb-4">
-        <Feather name="search" size={24} color="black" />
+        <Feather name="search" size={24} color={brandColor} />
         <TextInput
           value={text}
           onChangeText={handleSearch}
@@ -123,6 +121,8 @@ export default function ManagementScreen() {
         <FlatList
           data={meds}
           keyExtractor={(item) => item.id.toString()}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           ListEmptyComponent={
             <Text className="text-center mt-10 text-primary/50">{t("no_medications")}</Text>
           }

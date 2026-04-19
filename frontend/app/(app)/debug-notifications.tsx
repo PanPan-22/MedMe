@@ -1,3 +1,4 @@
+import { useBrandColor } from "@/hooks/use-brand-color";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Notifications from "expo-notifications";
 import { router, Stack, useFocusEffect } from "expo-router";
@@ -15,6 +16,7 @@ interface NotifInfo {
 
 export default function DebugNotificationsScreen() {
   const { t } = useTranslation();
+  const { primary } = useBrandColor();
   const [notifs, setNotifs] = useState<NotifInfo[]>([]);
 
   const refresh = useCallback(async () => {
@@ -40,7 +42,7 @@ export default function DebugNotificationsScreen() {
           onPress={() => router.back()}
           className="active:opacity-70 bg-primary/10 rounded-xl p-3 items-center justify-center"
         >
-          <Ionicons name="arrow-back-outline" size={22} color="#062d13" />
+          <Ionicons name="arrow-back-outline" size={22} color={primary} />
         </Pressable>
         <Pressable
           onPress={refresh}

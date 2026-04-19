@@ -4,7 +4,6 @@ import { cancelNotificationsForMed } from "@/hooks/use-notifications";
 import { Feather } from "@expo/vector-icons";
 import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "@react-navigation/native";
 import { router, Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
@@ -33,7 +32,6 @@ type Mode = "view" | "edit";
 
 export default function PatientListScreen() {
   const db = useSQLiteContext();
-  const { colors } = useTheme();
   const { colorScheme } = useColorScheme();
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -152,13 +150,13 @@ export default function PatientListScreen() {
         <View className="flex-row items-center justify-between p-2 mb-4 w-full">
           <View className="flex-row items-center gap-4">
             <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-              <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+              <Ionicons name="arrow-back-outline" size={24} color={theme.primary} />
             </Pressable>
             <Text className="text-2xl font-bold text-primary">{t("patients")}</Text>
           </View>
           {mode === "view" ? (
             <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => setShowActionModal(true)}>
-              <Ionicons name="create-outline" size={32} color={colors.text} />
+              <Ionicons name="create-outline" size={32} color={theme.primary} />
             </Pressable>
           ) : (
             <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={exitEditMode}>
@@ -167,7 +165,7 @@ export default function PatientListScreen() {
           )}
         </View>
         <View className="flex-row items-center gap-2 px-3 w-full bg-card border border-muted rounded-full mb-4">
-          <Feather name="search" size={24} color="black" />
+          <Feather name="search" size={24} color={theme.primary} />
           <TextInput
             value={text}
             onChangeText={(q) => { setText(q); searchPatient(q); }}
@@ -183,6 +181,8 @@ export default function PatientListScreen() {
         extraData={{ mode, selectedIds }}
         data={results}
         keyExtractor={(item) => item.id.toString()}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         ListEmptyComponent={<Text className="text-center mt-10 text-primary/50">{t("no_patients")}</Text>}
         renderItem={({ item }) => (
           <Pressable
@@ -249,7 +249,7 @@ export default function PatientListScreen() {
               <View className="flex-row items-center justify-between mb-6">
                 <Text className="text-2xl font-bold text-primary">{t("link_patient")}</Text>
                 <Pressable hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }} onPress={closeAddModal}>
-                  <Ionicons name="close" size={24} color={colors.text} />
+                  <Ionicons name="close" size={24} color={theme.primary} />
                 </Pressable>
               </View>
 

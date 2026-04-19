@@ -2,7 +2,6 @@ import LanguageToggle from "@/components/language-toggle";
 import { useBrandColor } from "@/hooks/use-brand-color";
 import { useClerk, useSignUp } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "@react-navigation/native";
 import { router } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -27,9 +26,8 @@ const ROLES: { value: Role; key: string; icon: string }[] = [
 export default function SignUpScreen() {
   const { signUp, errors, fetchStatus } = useSignUp();
   const { setActive } = useClerk();
-  const { colors } = useTheme();
   const { t } = useTranslation();
-  const { background } = useBrandColor();
+  const { background, primary, primarySoft } = useBrandColor();
 
   const [role, setRole] = useState<Role>("caretaker");
   const [firstName, setFirstName] = useState("");
@@ -44,7 +42,10 @@ export default function SignUpScreen() {
   const loading = fetchStatus === "fetching";
   const visibleErrors = showErrors ? errors : undefined;
   const raw = (visibleErrors as any)?.raw ?? [];
-  const usernameError = raw.find((e: any) => e.meta?.paramName === "username" || e.meta?.paramName === "identifier");
+  const usernameError = raw.find(
+    (e: any) =>
+      e.meta?.paramName === "username" || e.meta?.paramName === "identifier",
+  );
   const passwordError = raw.find((e: any) => e.meta?.paramName === "password");
   const globalError = raw.find((e: any) => !e.meta?.paramName);
 
@@ -59,7 +60,11 @@ export default function SignUpScreen() {
       await signUp.create({
         username: username.trim(),
         password,
-        unsafeMetadata: { role, firstName: firstName.trim(), lastName: lastName.trim() },
+        unsafeMetadata: {
+          role,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+        },
       });
       if (signUp.status === "complete") {
         await setActive({ session: signUp.createdSessionId });
@@ -77,23 +82,36 @@ export default function SignUpScreen() {
     >
       <ScrollView
         className="flex-1 px-6"
-        contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingBottom: 32 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: "center",
+          paddingBottom: 32,
+        }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <View className="gap-6">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-3 shrink">
               <Pressable hitSlop={20} onPress={() => router.back()}>
-                <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+                <Ionicons name="arrow-back-outline" size={24} color={primary} />
               </Pressable>
-              <Text className="text-3xl font-bold text-primary shrink" numberOfLines={1} adjustsFontSizeToFit>{t("register")}</Text>
+              <Text
+                className="text-3xl font-bold text-primary shrink"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {t("register")}
+              </Text>
             </View>
             <LanguageToggle />
           </View>
 
           {/* Role selection */}
           <View className="gap-3">
-            <Text className="text-base font-semibold text-primary">{t("i_am_a")}</Text>
+            <Text className="text-base font-semibold text-primary">
+              {t("i_am_a")}
+            </Text>
             <View className="flex-row gap-3">
               {ROLES.map(({ value, key, icon }) => {
                 const selected = role === value;
@@ -102,11 +120,19 @@ export default function SignUpScreen() {
                     key={value}
                     onPress={() => setRole(value)}
                     className={`flex-1 items-center justify-center rounded-2xl p-5 border-2 ${
-                      selected ? "bg-primary border-primary" : "bg-card border-muted"
+                      selected
+                        ? "bg-primary border-primary"
+                        : "bg-card border-muted"
                     }`}
                   >
-                    <Ionicons name={icon as any} size={30} color={selected ? background : "#888"} />
-                    <Text className={`mt-2 font-semibold ${selected ? "text-background" : "text-primary/60"}`}>
+                    <Ionicons
+                      name={icon as any}
+                      size={30}
+                      color={selected ? background : "#888"}
+                    />
+                    <Text
+                      className={`mt-2 font-semibold ${selected ? "text-background" : "text-primary/60"}`}
+                    >
                       {t(key)}
                     </Text>
                   </Pressable>
@@ -118,7 +144,9 @@ export default function SignUpScreen() {
           {/* First & Last Name */}
           <View className="flex-row gap-3">
             <View className="flex-1 gap-2">
-              <Text className="text-base font-semibold text-primary">{t("first_name")}</Text>
+              <Text className="text-base font-semibold text-primary">
+                {t("first_name")}
+              </Text>
               <TextInput
                 value={firstName}
                 onChangeText={setFirstName}
@@ -128,7 +156,9 @@ export default function SignUpScreen() {
               />
             </View>
             <View className="flex-1 gap-2">
-              <Text className="text-base font-semibold text-primary">{t("last_name")}</Text>
+              <Text className="text-base font-semibold text-primary">
+                {t("last_name")}
+              </Text>
               <TextInput
                 value={lastName}
                 onChangeText={setLastName}
@@ -140,10 +170,15 @@ export default function SignUpScreen() {
           </View>
 
           <View className="gap-2">
-            <Text className="text-base font-semibold text-primary">{t("username")}</Text>
+            <Text className="text-base font-semibold text-primary">
+              {t("username")}
+            </Text>
             <TextInput
               value={username}
-              onChangeText={(v) => { setUsername(v); setShowErrors(false); }}
+              onChangeText={(v) => {
+                setUsername(v);
+                setShowErrors(false);
+              }}
               placeholder={t("placeholder_username")}
               placeholderTextColor="#888888"
               autoCapitalize="none"
@@ -151,16 +186,26 @@ export default function SignUpScreen() {
               className={`text-primary bg-card border rounded-2xl px-4 py-3 text-base ${usernameError ? "border-red-500" : "border-primary"}`}
             />
             {usernameError && (
-              <Text className="text-red-500 text-xs">{usernameError.longMessage ?? usernameError.message}</Text>
+              <Text className="text-red-500 text-xs">
+                {usernameError.longMessage ?? usernameError.message}
+              </Text>
             )}
           </View>
 
           <View className="gap-2">
-            <Text className="text-base font-semibold text-primary">{t("password")}</Text>
-            <View className={`flex-row items-center bg-card border rounded-2xl px-4 ${passwordError ? "border-red-500" : "border-primary"}`}>
+            <Text className="text-base font-semibold text-primary">
+              {t("password")}
+            </Text>
+            <View
+              className={`flex-row items-center bg-card border rounded-2xl px-4 ${passwordError ? "border-red-500" : "border-primary"}`}
+            >
               <TextInput
                 value={password}
-                onChangeText={(v) => { setPassword(v); setShowErrors(false); setMismatchError(false); }}
+                onChangeText={(v) => {
+                  setPassword(v);
+                  setShowErrors(false);
+                  setMismatchError(false);
+                }}
                 placeholder="••••••••"
                 placeholderTextColor="#888888"
                 secureTextEntry={!showPassword}
@@ -168,21 +213,37 @@ export default function SignUpScreen() {
                 autoCorrect={false}
                 className="flex-1 py-3 text-base text-primary"
               />
-              <Pressable hitSlop={12} onPress={() => setShowPassword(p => !p)}>
-                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#888" />
+              <Pressable
+                hitSlop={12}
+                onPress={() => setShowPassword((p) => !p)}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color={primarySoft}
+                />
               </Pressable>
             </View>
             {passwordError && (
-              <Text className="text-red-500 text-xs">{passwordError.longMessage ?? passwordError.message}</Text>
+              <Text className="text-red-500 text-xs">
+                {passwordError.longMessage ?? passwordError.message}
+              </Text>
             )}
           </View>
 
           <View className="gap-2">
-            <Text className="text-base font-semibold text-primary">{t("confirm_password")}</Text>
-            <View className={`flex-row items-center bg-card border rounded-2xl px-4 ${mismatchError ? "border-red-500" : "border-primary"}`}>
+            <Text className="text-base font-semibold text-primary">
+              {t("confirm_password")}
+            </Text>
+            <View
+              className={`flex-row items-center bg-card border rounded-2xl px-4 ${mismatchError ? "border-red-500" : "border-primary"}`}
+            >
               <TextInput
                 value={confirmPassword}
-                onChangeText={(v) => { setConfirmPassword(v); setMismatchError(false); }}
+                onChangeText={(v) => {
+                  setConfirmPassword(v);
+                  setMismatchError(false);
+                }}
                 placeholder="••••••••"
                 placeholderTextColor="#888888"
                 secureTextEntry={!showPassword}
@@ -190,17 +251,28 @@ export default function SignUpScreen() {
                 autoCorrect={false}
                 className="flex-1 py-3 text-base text-primary"
               />
-              <Pressable hitSlop={12} onPress={() => setShowPassword(p => !p)}>
-                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#888" />
+              <Pressable
+                hitSlop={12}
+                onPress={() => setShowPassword((p) => !p)}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color={primarySoft}
+                />
               </Pressable>
             </View>
             {mismatchError && (
-              <Text className="text-red-500 text-xs">{t("passwords_do_not_match")}</Text>
+              <Text className="text-red-500 text-xs">
+                {t("passwords_do_not_match")}
+              </Text>
             )}
           </View>
 
           {globalError && (
-            <Text className="text-red-500 text-sm -mt-2">{globalError.longMessage ?? globalError.message}</Text>
+            <Text className="text-red-500 text-sm -mt-2">
+              {globalError.longMessage ?? globalError.message}
+            </Text>
           )}
 
           <Pressable
@@ -208,10 +280,13 @@ export default function SignUpScreen() {
             onPress={handleSignUp}
             disabled={loading}
           >
-            {loading
-              ? <ActivityIndicator color={background} />
-              : <Text className="text-background text-xl font-bold">{t("create_account")}</Text>
-            }
+            {loading ? (
+              <ActivityIndicator color={background} />
+            ) : (
+              <Text className="text-background text-xl font-bold">
+                {t("create_account")}
+              </Text>
+            )}
           </Pressable>
         </View>
       </ScrollView>
