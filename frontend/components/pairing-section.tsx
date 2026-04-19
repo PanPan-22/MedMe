@@ -1,6 +1,6 @@
 import { ConfirmModal } from "@/components/confirm-modal";
 import { useToast } from "@/context/toast-context";
-import { createPairingCode, deletePairingCode, readUserProfile, redeemPairingCode, removePatientLink } from "@/db/firestore-ops";
+import { createPairingCode, deletePairingCode, readUserProfile, redeemPairingCode, removePatientLink, watchUserProfile } from "@/db/firestore-ops";
 import { getLink } from "@/db/sync-db";
 import { PatientLink } from "@/db/sync-types";
 import { useBrandColor } from "@/hooks/use-brand-color";
@@ -45,11 +45,12 @@ export function PairingSection() {
 
   useEffect(() => {
     if (!link) { setCaretakerName(null); return; }
-    readUserProfile(link.caretaker_clerk_id).then((p) => {
+    const unsub = watchUserProfile(link.caretaker_clerk_id, (p) => {
       if (!p) { setCaretakerName(null); return; }
       const name = [p.firstName, p.lastName].filter(Boolean).join(" ");
       setCaretakerName(name || null);
-    }).catch(() => setCaretakerName(null));
+    });
+    return () => unsub();
   }, [link?.caretaker_clerk_id]);
 
   useEffect(() => {

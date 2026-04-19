@@ -51,15 +51,6 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
     `);
 
     await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS user_profile (
-        clerk_id TEXT PRIMARY KEY NOT NULL,
-        first_name TEXT,
-        last_name TEXT,
-        role TEXT
-      );
-    `);
-
-    await db.execAsync(`
       CREATE TABLE IF NOT EXISTS patient_links (
         patient_clerk_id TEXT PRIMARY KEY,
         caretaker_clerk_id TEXT NOT NULL,
@@ -89,6 +80,7 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
     `);
 
     const migrations = [
+      `DROP TABLE IF EXISTS user_profile`,
       `ALTER TABLE patients ADD COLUMN image_uri TEXT`,
       `ALTER TABLE patients ADD COLUMN clerk_user_id TEXT`,
       `ALTER TABLE patients ADD COLUMN updated_at TEXT`,

@@ -157,6 +157,12 @@ async function applyLogUpsert(ctx: ApplyContext, event: SyncEvent) {
   );
 }
 
+async function applyLogDelete(ctx: ApplyContext, event: SyncEvent) {
+  const syncId: string = event.payload.sync_id;
+  if (!syncId) return;
+  await ctx.db.runAsync(`DELETE FROM medication_logs WHERE sync_id = ?`, [syncId]);
+}
+
 async function applyLinkRemove(ctx: ApplyContext, _event: SyncEvent) {
   if (ctx.selfRole === "patient") {
     await ctx.db.runAsync(`DELETE FROM patient_links WHERE patient_clerk_id = ?`, [ctx.selfClerkId]);
@@ -168,6 +174,7 @@ export async function applyEvent(ctx: ApplyContext, event: SyncEvent): Promise<v
     case "schedule.upsert": return applyScheduleUpsert(ctx, event);
     case "schedule.delete": return applyScheduleDelete(ctx, event);
     case "log.upsert": return applyLogUpsert(ctx, event);
+    case "log.delete": return applyLogDelete(ctx, event);
     case "link.remove": return applyLinkRemove(ctx, event);
     case "patient.roster.upsert":
     case "patient.roster.delete":

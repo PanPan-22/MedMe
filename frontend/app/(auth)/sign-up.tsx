@@ -16,7 +16,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSQLiteContext } from "expo-sqlite";
 
 type Role = "caretaker" | "patient";
 
@@ -30,7 +29,6 @@ export default function SignUpScreen() {
   const { setActive } = useClerk();
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const db = useSQLiteContext();
   const { background } = useBrandColor();
 
   const [role, setRole] = useState<Role>("caretaker");
@@ -65,10 +63,6 @@ export default function SignUpScreen() {
       });
       if (signUp.status === "complete") {
         await setActive({ session: signUp.createdSessionId });
-        await db.runAsync(
-          "INSERT OR REPLACE INTO user_profile (clerk_id, first_name, last_name, role) VALUES (?, ?, ?, ?)",
-          [signUp.createdUserId ?? "", firstName.trim(), lastName.trim(), role],
-        );
         router.replace("/(app)");
       }
     } catch {

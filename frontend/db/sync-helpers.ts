@@ -126,8 +126,8 @@ export async function updateScheduleAndSync(
        repeat_days = ?, start_date = ?, end_date = ?, updated_at = ?
      WHERE id = ?`,
     [
-      merged.medicine_name, merged.type, merged.count, merged.whenToTake, merged.additional,
-      merged.notification_id, merged.stock, merged.expiration_date, merged.image_uri,
+      merged.medicine_name, merged.type, merged.count, merged.whenToTake, merged.additional ?? null,
+      merged.notification_id ?? null, merged.stock, merged.expiration_date ?? null, merged.image_uri ?? null,
       merged.repeat_days, merged.start_date, merged.end_date, updatedAt, localId,
     ],
   );
@@ -224,6 +224,87 @@ export async function insertLogAndSync(
         value: input.value ?? null,
       },
       sourceUpdatedAt: updatedAt,
+    });
+  }
+}
+
+export async function updateLogAndSync(
+  db: SQLite.SQLiteDatabase,
+  selfClerkId: string,
+  selfRole: Role,
+  localId: number,
+  fields: Partial<{ status: "taken" | "skipped" | "recorded"; value: string | null; timestamp: string }>,
+): Promise<void> {
+  const updatedAt = nowIso();
+  const existing = await db.getFirstAsync<{
+    sync_id: string | null; medication_id: number; patient_id: number | null;
+    scheduled_time: string; log_date: string; timestamp: string; status: string; value: string | null;
+  }>(`SELECT * FROM medication_logs WHERE id = ?`, [localId]);
+  if (!existing) return;
+
+  let syncId = existing.sync_id;
+  if (!syncId) {
+    syncId = newId();
+    await db.runAsync(`UPDATE medication_logs SET sync_id = ? WHERE id = ?`, [syncId, localId]);
+  }
+
+  const merged = {
+    status: fields.status ?? existing.status,
+    value: fields.value !== undefined ? fields.value : existing.value,
+    timestamp: fields.timestamp ?? existing.timestamp,
+  };
+
+  await db.runAsync(
+    `UPDATE medication_logs SET status = ?, value = ?, timestamp = ?, updated_at = ? WHERE id = ?`,
+    [merged.status, merged.value, merged.timestamp, updatedAt, localId],
+  );
+
+  const scheduleRow = await db.getFirstAsync<{ sync_id: string | null }>(
+    `SELECT sync_id FROM schedules WHERE id = ?`, [existing.medication_id],
+  );
+
+  const { targetClerkId, patientClerkId } = await resolveTarget(db, selfClerkId, selfRole, existing.patient_id);
+  if (targetClerkId && patientClerkId) {
+    await enqueue(db, {
+      targetClerkId,
+      type: "log.upsert",
+      payload: {
+        sync_id: syncId,
+        patient_clerk_id: patientClerkId,
+        schedule_sync_id: scheduleRow?.sync_id ?? null,
+        medication_id: existing.medication_id,
+        scheduled_time: existing.scheduled_time,
+        log_date: existing.log_date,
+        timestamp: merged.timestamp,
+        status: merged.status,
+        value: merged.value,
+      },
+      sourceUpdatedAt: updatedAt,
+    });
+  }
+}
+
+export async function deleteLogAndSync(
+  db: SQLite.SQLiteDatabase,
+  selfClerkId: string,
+  selfRole: Role,
+  localId: number,
+): Promise<void> {
+  const existing = await db.getFirstAsync<{ sync_id: string | null; patient_id: number | null }>(
+    `SELECT sync_id, patient_id FROM medication_logs WHERE id = ?`, [localId],
+  );
+  if (!existing) return;
+  await db.runAsync(`DELETE FROM medication_logs WHERE id = ?`, [localId]);
+
+  const syncId = existing.sync_id;
+  if (!syncId) return;
+  const { targetClerkId, patientClerkId } = await resolveTarget(db, selfClerkId, selfRole, existing.patient_id);
+  if (targetClerkId && patientClerkId) {
+    await enqueue(db, {
+      targetClerkId,
+      type: "log.delete",
+      payload: { sync_id: syncId, patient_clerk_id: patientClerkId },
+      sourceUpdatedAt: nowIso(),
     });
   }
 }

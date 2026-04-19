@@ -9,10 +9,21 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.suphasan.medme",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "permissions": ["android.permission.SCHEDULE_EXACT_ALARM", "android.permission.USE_EXACT_ALARM"],
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.USE_EXACT_ALARM",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.USE_EXACT_ALARM",
+        "android.permission.RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -20,7 +31,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.suphasan.medme"
     },
     "web": {
       "output": "static",
@@ -63,8 +75,8 @@
         "expo-notifications",
         {
           "sounds": [
-            "./assets/audios/universfield-023.wav",
-            "./assets/audios/universfield-029.wav"
+            "./assets/audios/universfield_023.wav",
+            "./assets/audios/universfield_029.wav"
           ]
         }
       ],
@@ -84,8 +96,15 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "9412dfb3-be73-46f5-8e54-127281abffd0"
+        "projectId": "b4b47fc8-cadc-4792-958e-661336e54ac3"
       }
+    },
+    "owner": "suphasan_kh",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b4b47fc8-cadc-4792-958e-661336e54ac3"
     }
   }
 }

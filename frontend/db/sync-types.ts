@@ -2,6 +2,7 @@ export type EventType =
   | "schedule.upsert"
   | "schedule.delete"
   | "log.upsert"
+  | "log.delete"
   | "patient.roster.upsert"
   | "patient.roster.delete"
   | "link.create"

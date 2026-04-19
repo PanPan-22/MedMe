@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 
 export const CHANNEL_ID = "medme";
-const SOUND_FILE = "universfield-029.wav";
+const SOUND_FILE = "universfield_029.wav";
 
 // iOS allows max 64 scheduled notifications per app; leave headroom for multiple meds
 const MAX_NOTIFS_PER_MED = 60;

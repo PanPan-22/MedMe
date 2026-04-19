@@ -72,6 +72,12 @@ export async function readUserProfile(clerkId: string): Promise<FirestoreUser | 
   return snap.exists() ? (snap.data() as FirestoreUser) : null;
 }
 
+export function watchUserProfile(clerkId: string, cb: (profile: FirestoreUser | null) => void) {
+  return onSnapshot(doc(firestore, USERS_COLLECTION, clerkId), (snap) => {
+    cb(snap.exists() ? (snap.data() as FirestoreUser) : null);
+  });
+}
+
 function generateCode(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
 }

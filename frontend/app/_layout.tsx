@@ -3,7 +3,6 @@ import { ToastProvider } from "@/context/toast-context";
 import { initializeDatabase } from "@/db/initialize";
 import { useSecureStorage } from "@/hooks/use-securestore";
 import { ClerkLoaded, ClerkProvider } from "@clerk/expo";
-import { tokenCache } from "@clerk/expo/secure-store";
 import { Stack } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
@@ -43,7 +42,7 @@ export default function RootLayout() {
   if (!isReady) return null;
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+    <ClerkProvider publishableKey={publishableKey}>
       <ClerkLoaded>
         <View className={`flex-1 ${colorScheme === "dark" ? "dark" : "light"}`}>
           <StatusBar style={colorScheme === "dark" ? "dark" : "light"} />
