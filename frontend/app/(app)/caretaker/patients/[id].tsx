@@ -1,7 +1,6 @@
 import { Medication } from "@/components/local-db";
 import { useBrandColor } from "@/hooks/use-brand-color";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "@react-navigation/native";
 import {
   router,
   Stack,
@@ -53,7 +52,6 @@ export default function PatientDetailScreen() {
     patientName: string;
   }>();
   const { t } = useTranslation();
-  const { colors } = useTheme();
   const { primary: brandColor, background } = useBrandColor();
   const db = useSQLiteContext();
   const { width } = useWindowDimensions();
@@ -98,7 +96,7 @@ export default function PatientDetailScreen() {
                 <Ionicons
                   name="arrow-back-outline"
                   size={24}
-                  color={colors.text}
+                  color={brandColor}
                 />
               </Pressable>
               {patientImage ? (

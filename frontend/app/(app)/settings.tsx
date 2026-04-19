@@ -152,7 +152,7 @@ export default function SettingsScreen() {
   const unselectedCls = "bg-transparent border-primary/40";
 
   return (
-    <ScrollView className="bg-background px-4 pt-4 h-full">
+    <ScrollView className="bg-background px-4 pt-4 h-full" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       <Stack.Screen options={{ headerShown: true, title: t("settings") }} />
 
       <View className="flex-row items-center gap-4 p-2 mb-4">

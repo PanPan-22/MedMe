@@ -32,7 +32,7 @@ function getNextAlarm(meds: Medication[]): { time: string } | null {
 export default function CaretakerHome() {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const { background } = useBrandColor();
+  const { background, primary } = useBrandColor();
   const db = useSQLiteContext();
   const { user } = useUser();
   const { width } = useWindowDimensions();
@@ -123,7 +123,7 @@ export default function CaretakerHome() {
                           className="active:opacity-70 p-1"
                           onPress={() => router.push({ pathname: "/caretaker/patients/[id]", params: { id: item.id, patientName: item.name } })}
                         >
-                          <Ionicons name="information-circle-outline" size={26} color={colors.primary} />
+                          <Ionicons name="information-circle-outline" size={26} color={primary} />
                         </Pressable>
                       </View>
 
@@ -138,7 +138,7 @@ export default function CaretakerHome() {
                             <Image source={{ uri: med.image_uri }} className="w-11 h-11 rounded-xl" resizeMode="cover" />
                           ) : (
                             <View className="w-11 h-11 rounded-xl bg-primary/10 items-center justify-center">
-                              <Ionicons name="medical-outline" size={22} color={colors.primary} />
+                              <Ionicons name="medical-outline" size={22} color={primary} />
                             </View>
                           )}
                         </View>
@@ -169,7 +169,7 @@ export default function CaretakerHome() {
             </Link>
             <Link href="/debug-notifications" push asChild>
               <Pressable className="active:opacity-70 flex-row items-center justify-center gap-3 bg-primary/10 rounded-xl p-4 w-full">
-                <Ionicons name="notifications-outline" size={24} color="#062d13" />
+                <Ionicons name="notifications-outline" size={24} color={primary} />
                 <Text className="text-primary text-base font-semibold">Debug: Scheduled Notifications</Text>
               </Pressable>
             </Link>

@@ -1,7 +1,8 @@
+import MedMeLogoBlack from "@/assets/images/black_medme.svg";
+import MedMeLogoWhite from "@/assets/images/white_medme.svg";
 import LanguageToggle from "@/components/language-toggle";
-import { useBrandColor } from "@/hooks/use-brand-color";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link } from "expo-router";
+import { useColorScheme } from "nativewind";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,7 +10,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function WelcomeScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { background } = useBrandColor();
+  const { colorScheme } = useColorScheme();
+  const MedMeLogo = colorScheme === "dark" ? MedMeLogoBlack : MedMeLogoWhite;
 
   return (
     <View className="flex-1 bg-background px-6" style={{ paddingTop: insets.top + 12 }}>
@@ -20,7 +22,7 @@ export default function WelcomeScreen() {
       <View className="flex-1 items-center justify-center gap-8">
         <View className="items-center gap-3">
           <View className="bg-primary rounded-3xl p-5 mb-2">
-            <Ionicons name="medkit" size={56} color={background} />
+            <MedMeLogo width={56} height={56} />
           </View>
           <Text className="text-4xl font-bold text-primary">MedMe</Text>
           <Text className="text-primary/50 text-base text-center">{t("app_tagline")}</Text>

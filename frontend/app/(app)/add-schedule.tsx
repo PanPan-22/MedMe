@@ -3,7 +3,6 @@ import Feather from "@expo/vector-icons/Feather";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import NetInfo from "@react-native-community/netinfo";
-import { useTheme } from "@react-navigation/native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,8 +10,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 export default function AddMedicineScreen() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
-  const { background } = useBrandColor();
+  const { primary: brandColor, background } = useBrandColor();
   const { patientId, patientName } = useLocalSearchParams<{ patientId?: string; patientName?: string }>();
   const [isConnected, setIsConnected] = useState<boolean | null>(true);
 
@@ -30,7 +28,7 @@ export default function AddMedicineScreen() {
       <Stack.Screen options={{ headerShown: true, title: t("add_schedule") }} />
       <View className="flex-row items-center gap-4 p-2 mb-4">
         <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+          <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
         </Pressable>
         <Text className="text-2xl font-bold text-primary">{t("add_schedule")}</Text>
       </View>

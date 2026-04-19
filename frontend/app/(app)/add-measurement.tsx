@@ -5,7 +5,6 @@ import { scheduleNotificationsForMed } from "@/hooks/use-notifications";
 import { toLocalISODate } from "@/lib/date";
 import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "@react-navigation/native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
@@ -24,8 +23,7 @@ const formatDate = (d: Date) =>
 
 export default function AddMeasurementScreen() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
-  const { background } = useBrandColor();
+  const { primary: brandColor, background } = useBrandColor();
   const { showToast } = useToast();
   const db = useSQLiteContext();
   const { user } = useUser();
@@ -110,12 +108,12 @@ export default function AddMeasurementScreen() {
   };
 
   return (
-    <ScrollView className="bg-background px-4 pt-4 h-full">
+    <ScrollView className="bg-background px-4 pt-4 h-full" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       <Stack.Screen options={{ headerShown: true, title: t("add_measurement") }} />
 
       <View className="flex-row items-center gap-4 p-2 mb-4">
         <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+          <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
         </Pressable>
         <Text className="text-2xl font-bold text-primary">{title}</Text>
       </View>
@@ -174,7 +172,7 @@ export default function AddMeasurementScreen() {
             onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
             className="flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
           >
-            <Ionicons name="add" size={16} color={colors.primary} />
+            <Ionicons name="add" size={16} color={brandColor} />
             <Text className="text-primary font-semibold ml-1">{t("add_time")}</Text>
           </Pressable>
         </View>

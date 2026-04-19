@@ -2,11 +2,11 @@ import { ConfirmModal } from "@/components/confirm-modal";
 import { Medication } from "@/components/local-db";
 import { useToast } from "@/context/toast-context";
 import { deleteScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
+import { useBrandColor } from "@/hooks/use-brand-color";
 import { cancelNotificationsForMed, scheduleNotificationsForMed } from "@/hooks/use-notifications";
 import { toLocalISODate } from "@/lib/date";
 import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "@react-navigation/native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
@@ -43,7 +43,7 @@ export default function MeasurementDetailScreen() {
   const db = useSQLiteContext();
   const { user } = useUser();
   const role = (user?.unsafeMetadata as any)?.role as "patient" | "caretaker" | undefined;
-  const { colors } = useTheme();
+  const { primary: brandColor } = useBrandColor();
   const { t } = useTranslation();
   const { showToast } = useToast();
 
@@ -162,7 +162,7 @@ export default function MeasurementDetailScreen() {
       <View className="flex-row items-center justify-between p-2 mb-4">
         <View className="flex-row items-center gap-3 flex-1">
           <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-            <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+            <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
           </Pressable>
           <Ionicons name={kindIcon} size={24} color="#dc2626" />
           <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>{kindLabel}</Text>
@@ -173,7 +173,7 @@ export default function MeasurementDetailScreen() {
           </Pressable>
         ) : (
           <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => setEditing(true)}>
-            <Ionicons name="create-outline" size={28} color={colors.text} />
+            <Ionicons name="create-outline" size={28} color={brandColor} />
           </Pressable>
         )}
       </View>
@@ -199,7 +199,7 @@ export default function MeasurementDetailScreen() {
                 onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
                 className="flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
               >
-                <Ionicons name="add" size={16} color={colors.primary} />
+                <Ionicons name="add" size={16} color={brandColor} />
                 <Text className="text-primary font-semibold ml-1">{t("add_time")}</Text>
               </Pressable>
             </View>

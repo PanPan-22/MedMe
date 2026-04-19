@@ -231,7 +231,7 @@ export default function PatientHome() {
                     <Ionicons
                       name="notifications-outline"
                       size={24}
-                      color="#062d13"
+                      color={brandColor}
                     />
                     <Text className="text-primary text-base font-semibold">
                       Debug: Scheduled Notifications

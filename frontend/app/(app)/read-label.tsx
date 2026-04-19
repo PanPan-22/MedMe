@@ -1,7 +1,6 @@
 import { useBrandColor } from "@/hooks/use-brand-color";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { GoogleGenAI } from "@google/genai";
-import { useTheme } from "@react-navigation/native";
 import { router, Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
@@ -118,7 +117,6 @@ const scanWithGoogleVision = async (uri: string) => {
 
 export default function MedicineScreen() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
   const { primary: brandColor } = useBrandColor();
   const [image, setImage] = useState("");
   const [scannedText, setScannedText] = useState("");
@@ -189,7 +187,7 @@ export default function MedicineScreen() {
       <Stack.Screen options={{ headerShown: true, title: t("read_label") }} />
       <View className="flex-row items-center gap-4 p-2 mb-4">
         <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+          <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
         </Pressable>
         <Text className="text-2xl font-bold text-primary">{t("read_label")}</Text>
       </View>

@@ -125,7 +125,7 @@ export default function NotificationModal() {
         <Text className="text-primary text-4xl font-bold">{time}</Text>
       </View>
 
-      <ScrollView className="flex-1 px-6" contentContainerStyle={{ gap: 12, paddingBottom: 24 }}>
+      <ScrollView className="flex-1 px-6" contentContainerStyle={{ gap: 12, paddingBottom: 24 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         {meds.length === 0 ? (
           <Text className="text-primary/50 text-center mt-10">{t("no_medications")}</Text>
         ) : (

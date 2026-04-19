@@ -6,7 +6,6 @@ import { toLocalISODate } from "@/lib/date";
 import { uploadMedImage } from "@/lib/upload";
 import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "@react-navigation/native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
@@ -27,7 +26,6 @@ const DAY_KEYS: Record<string, string> = {
 
 export default function ConfirmMedicationScreen() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
   const { primary: brandColor } = useBrandColor();
   const { showToast } = useToast();
   const db = useSQLiteContext();
@@ -97,12 +95,12 @@ export default function ConfirmMedicationScreen() {
   };
 
   return (
-    <ScrollView className="bg-background px-4 pt-4 h-full">
+    <ScrollView className="bg-background px-4 pt-4 h-full" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       <Stack.Screen options={{ headerShown: true, title: t("confirm_medication_title") }} />
 
       <View className="flex-row items-center gap-4 p-2 mb-4">
         <Pressable hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={colors.text} />
+          <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
         </Pressable>
         <Text className="text-2xl font-bold text-primary">{t("review_details")}</Text>
       </View>
@@ -224,7 +222,7 @@ export default function ConfirmMedicationScreen() {
             className="flex-row items-center bg-card border border-dashed border-primary rounded-full px-3 py-1.5"
             onPress={() => { setEditingTimeIndex(null); setTimePickerVisible(true); }}
           >
-            <Ionicons name="add" size={16} color={colors.primary} />
+            <Ionicons name="add" size={16} color={brandColor} />
             <Text className="text-primary font-medium ml-1 text-sm">{t("add_time")}</Text>
           </Pressable>
         </View>
