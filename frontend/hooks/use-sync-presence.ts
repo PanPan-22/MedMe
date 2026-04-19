@@ -87,7 +87,7 @@ export function useSyncPresence() {
             }
           }
           await db.runAsync(`DELETE FROM schedules WHERE patient_id = ?`, [p.id]);
-          await db.runAsync(`DELETE FROM medication_logs WHERE patient_id = ?`, [p.id]);
+          await db.runAsync(`DELETE FROM logs WHERE patient_id = ?`, [p.id]);
           await db.runAsync(`DELETE FROM patients WHERE id = ?`, [p.id]);
           showToast(`${p.name} has unlinked.`);
 

@@ -178,7 +178,7 @@ export async function deleteScheduleAndSync(
 }
 
 export interface LogInsertInput {
-  medication_id: number;
+  schedule_id: number;
   scheduled_time: string;
   log_date: string;
   timestamp: string;
@@ -196,15 +196,15 @@ export async function insertLogAndSync(
   const syncId = newId();
   const updatedAt = nowIso();
   await db.runAsync(
-    `INSERT INTO medication_logs
-      (sync_id, medication_id, scheduled_time, log_date, timestamp, status, patient_id, updated_at, value)
+    `INSERT INTO logs
+      (sync_id, schedule_id, scheduled_time, log_date, timestamp, status, patient_id, updated_at, value)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [syncId, input.medication_id, input.scheduled_time, input.log_date, input.timestamp, input.status, input.patient_id, updatedAt, input.value ?? null],
+    [syncId, input.schedule_id, input.scheduled_time, input.log_date, input.timestamp, input.status, input.patient_id, updatedAt, input.value ?? null],
   );
 
   const scheduleRow = await db.getFirstAsync<{ sync_id: string | null }>(
     `SELECT sync_id FROM schedules WHERE id = ?`,
-    [input.medication_id],
+    [input.schedule_id],
   );
 
   const { targetClerkId, patientClerkId } = await resolveTarget(db, selfClerkId, selfRole, input.patient_id);
@@ -216,7 +216,7 @@ export async function insertLogAndSync(
         sync_id: syncId,
         patient_clerk_id: patientClerkId,
         schedule_sync_id: scheduleRow?.sync_id ?? null,
-        medication_id: input.medication_id,
+        schedule_id: input.schedule_id,
         scheduled_time: input.scheduled_time,
         log_date: input.log_date,
         timestamp: input.timestamp,
@@ -237,15 +237,15 @@ export async function updateLogAndSync(
 ): Promise<void> {
   const updatedAt = nowIso();
   const existing = await db.getFirstAsync<{
-    sync_id: string | null; medication_id: number; patient_id: number | null;
+    sync_id: string | null; schedule_id: number; patient_id: number | null;
     scheduled_time: string; log_date: string; timestamp: string; status: string; value: string | null;
-  }>(`SELECT * FROM medication_logs WHERE id = ?`, [localId]);
+  }>(`SELECT * FROM logs WHERE id = ?`, [localId]);
   if (!existing) return;
 
   let syncId = existing.sync_id;
   if (!syncId) {
     syncId = newId();
-    await db.runAsync(`UPDATE medication_logs SET sync_id = ? WHERE id = ?`, [syncId, localId]);
+    await db.runAsync(`UPDATE logs SET sync_id = ? WHERE id = ?`, [syncId, localId]);
   }
 
   const merged = {
@@ -255,12 +255,12 @@ export async function updateLogAndSync(
   };
 
   await db.runAsync(
-    `UPDATE medication_logs SET status = ?, value = ?, timestamp = ?, updated_at = ? WHERE id = ?`,
+    `UPDATE logs SET status = ?, value = ?, timestamp = ?, updated_at = ? WHERE id = ?`,
     [merged.status, merged.value, merged.timestamp, updatedAt, localId],
   );
 
   const scheduleRow = await db.getFirstAsync<{ sync_id: string | null }>(
-    `SELECT sync_id FROM schedules WHERE id = ?`, [existing.medication_id],
+    `SELECT sync_id FROM schedules WHERE id = ?`, [existing.schedule_id],
   );
 
   const { targetClerkId, patientClerkId } = await resolveTarget(db, selfClerkId, selfRole, existing.patient_id);
@@ -272,7 +272,7 @@ export async function updateLogAndSync(
         sync_id: syncId,
         patient_clerk_id: patientClerkId,
         schedule_sync_id: scheduleRow?.sync_id ?? null,
-        medication_id: existing.medication_id,
+        schedule_id: existing.schedule_id,
         scheduled_time: existing.scheduled_time,
         log_date: existing.log_date,
         timestamp: merged.timestamp,
@@ -291,10 +291,10 @@ export async function deleteLogAndSync(
   localId: number,
 ): Promise<void> {
   const existing = await db.getFirstAsync<{ sync_id: string | null; patient_id: number | null }>(
-    `SELECT sync_id, patient_id FROM medication_logs WHERE id = ?`, [localId],
+    `SELECT sync_id, patient_id FROM logs WHERE id = ?`, [localId],
   );
   if (!existing) return;
-  await db.runAsync(`DELETE FROM medication_logs WHERE id = ?`, [localId]);
+  await db.runAsync(`DELETE FROM logs WHERE id = ?`, [localId]);
 
   const syncId = existing.sync_id;
   if (!syncId) return;

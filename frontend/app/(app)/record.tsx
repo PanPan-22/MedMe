@@ -9,7 +9,7 @@ import { Pressable, SectionList, Text, View } from "react-native";
 
 interface LogRow {
   id: number;
-  medication_id: number;
+  schedule_id: number;
   scheduled_time: string;
   log_date: string;
   timestamp: string;
@@ -122,8 +122,8 @@ export default function RecordScreen() {
     const from = dateNDaysAgo(preset);
     const to = todayStr();
     const query = pid !== null
-      ? `SELECT l.*, s.medicine_name, s.kind, s.count FROM medication_logs l LEFT JOIN schedules s ON l.medication_id = s.id WHERE l.patient_id = ? AND l.log_date >= ? AND l.log_date <= ? ORDER BY l.log_date DESC, l.scheduled_time ASC`
-      : `SELECT l.*, s.medicine_name, s.kind, s.count FROM medication_logs l LEFT JOIN schedules s ON l.medication_id = s.id WHERE l.patient_id IS NULL AND l.log_date >= ? AND l.log_date <= ? ORDER BY l.log_date DESC, l.scheduled_time ASC`;
+      ? `SELECT l.*, s.medicine_name, s.kind, s.count FROM logs l LEFT JOIN schedules s ON l.schedule_id = s.id WHERE l.patient_id = ? AND l.log_date >= ? AND l.log_date <= ? ORDER BY l.log_date DESC, l.scheduled_time ASC`
+      : `SELECT l.*, s.medicine_name, s.kind, s.count FROM logs l LEFT JOIN schedules s ON l.schedule_id = s.id WHERE l.patient_id IS NULL AND l.log_date >= ? AND l.log_date <= ? ORDER BY l.log_date DESC, l.scheduled_time ASC`;
     const args = pid !== null ? [pid, from, to] : [from, to];
     const rows = await db.getAllAsync<LogRow>(query, args);
 
@@ -287,7 +287,7 @@ export default function RecordScreen() {
                 return (
                 <View key={entry.id} className="flex-row items-center justify-between px-4 py-3 border-b border-gray-50 last:border-b-0">
                   <Text className="text-primary text-base flex-1" numberOfLines={1}>
-                    {entry.medicine_name ?? `Med #${entry.medication_id}`}
+                    {entry.medicine_name ?? `Med #${entry.schedule_id}`}
                   </Text>
                   {isMeasurement ? (
                     <View className="flex-row items-center gap-1 px-2 py-1 rounded-full bg-blue-50">

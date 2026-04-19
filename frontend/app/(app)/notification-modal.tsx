@@ -1,4 +1,4 @@
-import { Medication } from "@/components/local-db";
+import { Schedule } from "@/components/local-db";
 import { insertLogAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
 import { useBrandColor } from "@/hooks/use-brand-color";
 import { cancelNotificationsForMed, scheduleNotificationsForMed } from "@/hooks/use-notifications";
@@ -23,7 +23,7 @@ export default function NotificationModal() {
 
   const pid = patientId ? parseInt(patientId) : null;
 
-  const [meds, setMeds] = useState<Medication[]>([]);
+  const [meds, setMeds] = useState<Schedule[]>([]);
   const [checked, setChecked] = useState<Record<number, boolean>>({});
   const [values, setValues] = useState<Record<number, string>>({});
   const [bpSys, setBpSys] = useState<Record<number, string>>({});
@@ -34,7 +34,7 @@ export default function NotificationModal() {
       const query = pid !== null
         ? "SELECT * FROM schedules WHERE patient_id = ?"
         : "SELECT * FROM schedules WHERE patient_id IS NULL";
-      const all = await db.getAllAsync<Medication>(query, pid !== null ? [pid] : []);
+      const all = await db.getAllAsync<Schedule>(query, pid !== null ? [pid] : []);
       const atTime = all.filter((m) =>
         m.whenToTake?.split(",").map((s) => s.trim()).includes(time)
       );
@@ -59,7 +59,7 @@ export default function NotificationModal() {
       if (kind === "medication") {
         const status: "taken" | "skipped" = checked[med.id] ? "taken" : "skipped";
         await insertLogAndSync(db, user.id, role, {
-          medication_id: med.id,
+          schedule_id: med.id,
           scheduled_time: time,
           log_date: today,
           timestamp,
@@ -105,7 +105,7 @@ export default function NotificationModal() {
           value = v;
         }
         await insertLogAndSync(db, user.id, role, {
-          medication_id: med.id,
+          schedule_id: med.id,
           scheduled_time: time,
           log_date: today,
           timestamp,

@@ -171,5 +171,10 @@
   "simple_ui": "Simple UI",
   "simple_ui_desc": "Show only Next Medication and Record on the home screen.",
   "on": "On",
-  "off": "Off"
+  "off": "Off",
+  "sort": "Sort",
+  "sort_default": "Default",
+  "sort_alphabetical": "Alphabetical",
+  "sort_next_time": "Upcoming",
+  "tomorrow": "Tomorrow"
 }

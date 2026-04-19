@@ -28,7 +28,7 @@ async function findScheduleBySyncId(db: SQLite.SQLiteDatabase, syncId: string) {
 
 async function findLogBySyncId(db: SQLite.SQLiteDatabase, syncId: string) {
   return db.getFirstAsync<{ id: number; updated_at: string | null }>(
-    `SELECT id, updated_at FROM medication_logs WHERE sync_id = ?`,
+    `SELECT id, updated_at FROM logs WHERE sync_id = ?`,
     [syncId],
   );
 }
@@ -138,29 +138,29 @@ async function applyLogUpsert(ctx: ApplyContext, event: SyncEvent) {
     `SELECT id FROM schedules WHERE sync_id = ?`,
     [p.schedule_sync_id ?? ""],
   );
-  const medicationId = scheduleRow?.id ?? p.medication_id ?? null;
-  if (medicationId == null) return;
+  const scheduleId = scheduleRow?.id ?? p.schedule_id ?? null;
+  if (scheduleId == null) return;
 
   await ctx.db.runAsync(
-    `INSERT INTO medication_logs
-      (sync_id, medication_id, scheduled_time, log_date, timestamp, status, patient_id, updated_at, value)
+    `INSERT INTO logs
+      (sync_id, schedule_id, scheduled_time, log_date, timestamp, status, patient_id, updated_at, value)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(sync_id) DO UPDATE SET
-       medication_id = excluded.medication_id,
+       schedule_id = excluded.schedule_id,
        scheduled_time = excluded.scheduled_time,
        log_date = excluded.log_date,
        timestamp = excluded.timestamp,
        status = excluded.status,
        updated_at = excluded.updated_at,
        value = excluded.value`,
-    [syncId, medicationId, p.scheduled_time, p.log_date, p.timestamp, p.status, localPatientId, event.sourceUpdatedAt, p.value ?? null],
+    [syncId, scheduleId, p.scheduled_time, p.log_date, p.timestamp, p.status, localPatientId, event.sourceUpdatedAt, p.value ?? null],
   );
 }
 
 async function applyLogDelete(ctx: ApplyContext, event: SyncEvent) {
   const syncId: string = event.payload.sync_id;
   if (!syncId) return;
-  await ctx.db.runAsync(`DELETE FROM medication_logs WHERE sync_id = ?`, [syncId]);
+  await ctx.db.runAsync(`DELETE FROM logs WHERE sync_id = ?`, [syncId]);
 }
 
 async function applyLinkRemove(ctx: ApplyContext, _event: SyncEvent) {

@@ -1,5 +1,5 @@
 import { ConfirmModal } from "@/components/confirm-modal";
-import { Medication } from "@/components/local-db";
+import { Schedule } from "@/components/local-db";
 import { useToast } from "@/context/toast-context";
 import { deleteScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
 import { useBrandColor } from "@/hooks/use-brand-color";
@@ -47,7 +47,7 @@ export default function MeasurementDetailScreen() {
   const { t } = useTranslation();
   const { showToast } = useToast();
 
-  const [med, setMed] = useState<Medication | null>(null);
+  const [med, setMed] = useState<Schedule | null>(null);
   const [editing, setEditing] = useState(false);
 
   const [times, setTimes] = useState<string[]>([]);
@@ -63,14 +63,14 @@ export default function MeasurementDetailScreen() {
 
   const fetchMedication = async () => {
     try {
-      const result = await db.getFirstAsync<Medication>(
+      const result = await db.getFirstAsync<Schedule>(
         "SELECT * FROM schedules WHERE id = ?", [id.toString()],
       );
       if (result) { setMed(result); populateFields(result); }
     } catch (e) { console.error(e); }
   };
 
-  const populateFields = (m: Medication) => {
+  const populateFields = (m: Schedule) => {
     setTimes(m.whenToTake ? m.whenToTake.split(",").filter(Boolean) : []);
     setSelectedDays(m.repeat_days ? m.repeat_days.split(",").filter(Boolean) : DAYS_OF_WEEK);
     setStartDate(m.start_date ? new Date(m.start_date) : new Date());

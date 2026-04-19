@@ -1,5 +1,6 @@
-import { Medication } from "@/components/local-db";
+import { Schedule } from "@/components/local-db";
 import { useBrandColor } from "@/hooks/use-brand-color";
+import { getUpcomingSlots, slotDayLabelKey, UpcomingSlot } from "@/lib/med-sort";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   router,
@@ -19,33 +20,6 @@ import {
   View,
 } from "react-native";
 
-interface TimeSlot {
-  time: string;
-  meds: Medication[];
-}
-
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function getUpcomingSlots(meds: Medication[], limit = 5): TimeSlot[] {
-  const today = DAY_NAMES[new Date().getDay()];
-  const now = new Date();
-  const current = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-  const map = new Map<string, Medication[]>();
-  for (const med of meds) {
-    if (!med.repeat_days?.includes(today)) continue;
-    for (const t of (med.whenToTake ?? "").split(",").filter(Boolean)) {
-      if (t > current) {
-        if (!map.has(t)) map.set(t, []);
-        map.get(t)!.push(med);
-      }
-    }
-  }
-  return Array.from(map.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(0, limit)
-    .map(([time, meds]) => ({ time, meds }));
-}
-
 export default function PatientDetailScreen() {
   const { id, patientName } = useLocalSearchParams<{
     id: string;
@@ -57,13 +31,13 @@ export default function PatientDetailScreen() {
   const { width } = useWindowDimensions();
   const cardWidth = width - 32;
 
-  const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const [slots, setSlots] = useState<UpcomingSlot[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [patientImage, setPatientImage] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      db.getAllAsync<Medication>(
+      db.getAllAsync<Schedule>(
         "SELECT * FROM schedules WHERE patient_id = ?",
         [parseInt(id)],
       ).then((meds) => setSlots(getUpcomingSlots(meds)));
@@ -102,17 +76,17 @@ export default function PatientDetailScreen() {
               {patientImage ? (
                 <Image
                   source={{ uri: patientImage }}
-                  className="w-24 h-24 rounded-full"
+                  className="w-32 h-32 rounded-full"
                   resizeMode="cover"
                 />
               ) : (
-                <View className="w-24 h-24 rounded-full bg-primary/10 items-center justify-center">
-                  <Text className="text-primary font-bold text-3xl">
+                <View className="w-32 h-32 rounded-full bg-primary/10 items-center justify-center">
+                  <Text className="text-primary font-bold text-5xl">
                     {(patientName ?? "?").charAt(0)}
                   </Text>
                 </View>
               )}
-              <Text className="text-2xl font-bold text-primary">
+              <Text className="text-3xl font-bold text-primary mt-1">
                 {patientName}
               </Text>
             </View>
@@ -128,7 +102,7 @@ export default function PatientDetailScreen() {
                   pagingEnabled
                   showsHorizontalScrollIndicator={false}
                   data={slots}
-                  keyExtractor={(item) => item.time}
+                  keyExtractor={(item) => `${item.dayOffset}-${item.time}`}
                   onMomentumScrollEnd={(e) => {
                     setActiveIndex(
                       Math.round(e.nativeEvent.contentOffset.x / cardWidth),
@@ -137,6 +111,7 @@ export default function PatientDetailScreen() {
                   renderItem={({ item }) => {
                     const hour = parseInt(item.time.split(":")[0]);
                     const isNight = hour < 6 || hour >= 18;
+                    const dayKey = slotDayLabelKey(item.dayOffset);
                     return (
                       <View
                         style={{ width: cardWidth }}
@@ -144,13 +119,16 @@ export default function PatientDetailScreen() {
                       >
                         {/* Time pill */}
                         <View className="items-center pt-4">
-                          <View className="flex-row items-center gap-2 bg-yellow-100 rounded-full px-4 py-1">
+                          <View className={`flex-row items-center gap-2 rounded-full px-4 py-1 ${isNight ? "bg-blue-100" : "bg-yellow-100"}`}>
+                            {dayKey && (
+                              <Text className="text-black font-semibold text-sm">{t(dayKey)}</Text>
+                            )}
                             <Ionicons
                               name={isNight ? "moon" : "sunny"}
                               size={20}
                               color={isNight ? "#3b82f6" : "#f59e0b"}
                             />
-                            <Text className="text-primary font-bold text-2xl">{item.time}</Text>
+                            <Text className="text-black font-bold text-2xl">{item.time}</Text>
                           </View>
                         </View>
 
