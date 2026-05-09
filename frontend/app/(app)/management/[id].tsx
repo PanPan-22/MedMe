@@ -141,6 +141,7 @@ export default function MedicineDetailScreen() {
         stock: parseInt(stock) || 0,
         count: parseInt(amount) || 1,
         startDate: toLocalISODate(startDate),
+        endDate: expirationDate ? toLocalISODate(expirationDate) : null,
         patientId: med?.patient_id,
       });
       console.log(`[edit] scheduled new notifs: "${notifIds}" (count=${notifIds.split(",").filter(Boolean).length})`);
@@ -217,37 +218,38 @@ export default function MedicineDetailScreen() {
   }
 
   return (
-    <ScrollView className="bg-background flex-1" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+    <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: true, title: t("detail") }} />
 
-      <View className="px-4 pt-4 pb-12">
-        {/* Header */}
-        <View className="flex-row items-center justify-between p-2 mb-4 w-full">
-          <View className="flex-row items-center gap-4 flex-1 mr-4">
-            <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-              <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
-            </Pressable>
-            <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>
-              {med.medicine_name}
-            </Text>
-          </View>
-
-          {editing ? (
-            <View className="flex-row gap-3 items-center">
-              <Pressable className="active:opacity-70" hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }} onPress={cancelEdit}>
-                <Text className="text-primary/60 font-semibold">{t("cancel")}</Text>
-              </Pressable>
-              <Pressable className="active:opacity-70 bg-primary px-4 py-2 rounded-xl" onPress={save}>
-                <Text className="text-background font-bold text-sm">{t("save")}</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => setEditing(true)}>
-              <Ionicons name="create-outline" size={28} color={brandColor} />
-            </Pressable>
-          )}
+      {/* Sticky header */}
+      <View className="flex-row items-center justify-between gap-4 px-6 pt-6 pb-6 bg-background w-full">
+        <View className="flex-row items-center gap-4 flex-1 mr-4">
+          <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
+            <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
+          </Pressable>
+          <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>
+            {med.medicine_name}
+          </Text>
         </View>
 
+        {editing ? (
+          <View className="flex-row gap-3 items-center">
+            <Pressable className="active:opacity-70" hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }} onPress={cancelEdit}>
+              <Text className="text-primary/60 font-semibold">{t("cancel")}</Text>
+            </Pressable>
+            <Pressable className="active:opacity-70 bg-primary px-4 py-2 rounded-xl" onPress={save}>
+              <Text className="text-background font-bold text-sm">{t("save")}</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => setEditing(true)}>
+            <Ionicons name="create-outline" size={28} color={brandColor} />
+          </Pressable>
+        )}
+      </View>
+
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+      <View className="px-4 pb-12">
         {/* Image */}
         {editing ? (
           <View className="gap-2 mb-4">
@@ -512,6 +514,7 @@ export default function MedicineDetailScreen() {
           </>
         )}
       </View>
+      </ScrollView>
 
       <DateTimePickerModal isVisible={isTimePickerVisible} mode="time" date={pickerDate} onConfirm={handleTimeConfirm} onCancel={() => { setEditingTimeIndex(null); setTimePickerVisible(false); }} />
       <DateTimePickerModal isVisible={isStartPickerVisible} mode="date" onConfirm={(d) => { setStartDate(d); setStartPickerVisible(false); }} onCancel={() => setStartPickerVisible(false)} />
@@ -526,6 +529,6 @@ export default function MedicineDetailScreen() {
         onCancel={() => setDeleteConfirmVisible(false)}
         onConfirm={confirmDeleteMed}
       />
-    </ScrollView>
+    </View>
   );
 }

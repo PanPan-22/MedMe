@@ -1,19 +1,33 @@
+import { BackHeader } from "@/components/back-header";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { CaretakerLinkSection, PairingSection } from "@/components/pairing-section";
 import { useToast } from "@/context/toast-context";
 import { deleteAccountFirestore } from "@/db/firestore-ops";
-import { cancelNotificationsForMed } from "@/hooks/use-notifications";
+import { writeSnapshot } from "@/db/snapshot";
+import { flushOutboxOnce } from "@/hooks/use-sync-engine";
+import {
+  cancelNotificationsForMed,
+  getSelectedSoundIndex,
+  setSelectedSoundIndex,
+  SOUND_FILES,
+  SOUND_SOURCES,
+} from "@/hooks/use-notifications";
 import { useSecureStorage } from "@/hooks/use-securestore";
 import { useClerk, useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { AudioPlayer, createAudioPlayer } from "expo-audio";
+import * as Linking from "expo-linking";
+import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useColorScheme } from "nativewind";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
+  AppState,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -50,12 +64,69 @@ export default function SettingsScreen() {
   const [deleting, setDeleting] = useState(false);
   const [simpleUi, setSimpleUi] = useState(false);
   const [debugNotifications, setDebugNotifications] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<"granted" | "denied" | "unknown">("unknown");
+  const [soundIndex, setSoundIndex] = useState<number>(1);
+  const [showSoundPicker, setShowSoundPicker] = useState(false);
 
   const { getValue } = useSecureStorage();
   useEffect(() => {
     getValue("simpleUi").then((v) => setSimpleUi(v === "true"));
     getValue("debugNotifications").then((v) => setDebugNotifications(v === "true"));
+    getSelectedSoundIndex().then(setSoundIndex);
   }, []);
+
+  const refreshNotifPermission = async () => {
+    const { status } = await Notifications.getPermissionsAsync();
+    setNotifPermission(status === "granted" ? "granted" : "denied");
+  };
+
+  useEffect(() => {
+    refreshNotifPermission();
+    const sub = AppState.addEventListener("change", (s) => {
+      if (s === "active") refreshNotifPermission();
+    });
+    return () => sub.remove();
+  }, []);
+
+  const previewPlayerRef = useRef<AudioPlayer | null>(null);
+  const previewStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stopPreview = () => {
+    if (previewStopTimer.current) {
+      clearTimeout(previewStopTimer.current);
+      previewStopTimer.current = null;
+    }
+    if (previewPlayerRef.current) {
+      try { previewPlayerRef.current.pause(); } catch { /* ignore */ }
+      try { previewPlayerRef.current.release(); } catch { /* ignore */ }
+      previewPlayerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => stopPreview();
+  }, []);
+
+  const closeSoundPicker = () => {
+    stopPreview();
+    setShowSoundPicker(false);
+  };
+
+  const selectSound = async (index: number) => {
+    setSoundIndex(index);
+    await setSelectedSoundIndex(index);
+
+    // Fresh player each preview — avoids audio-session state getting stuck after pause.
+    stopPreview();
+    try {
+      const player = createAudioPlayer(SOUND_SOURCES[index]);
+      previewPlayerRef.current = player;
+      player.play();
+      previewStopTimer.current = setTimeout(() => stopPreview(), 3000);
+    } catch (e) {
+      console.warn("sound preview failed", e);
+    }
+  };
 
   const toggleSimpleUi = async (val: boolean) => {
     setSimpleUi(val);
@@ -159,16 +230,10 @@ export default function SettingsScreen() {
   const unselectedCls = "bg-transparent border-primary/40";
 
   return (
-    <ScrollView className="bg-background px-4 pt-4 h-full" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+    <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: true, title: t("settings") }} />
-
-      <View className="flex-row items-center gap-4 p-2 mb-4">
-        <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={primaryColor} />
-        </Pressable>
-        <Text className="text-2xl font-bold text-primary">{t("settings")}</Text>
-      </View>
-
+      <BackHeader title={t("settings")} />
+      <ScrollView className="px-4" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       {/* Profile */}
       <View className="px-2 py-4">
         <Text className="text-primary font-semibold mb-4 text-xl">{t("profile")}</Text>
@@ -337,6 +402,107 @@ export default function SettingsScreen() {
 
       <View className="border-b border-muted" />
 
+      {/* Notification Status */}
+      <View className="px-2 py-4">
+        <Text className="text-primary font-semibold mb-2 text-xl">{t("notifications_heading")}</Text>
+        <View className="flex-row items-center justify-between bg-card border border-primary/20 rounded-2xl px-4 py-3 mb-3">
+          <View className="flex-row items-center gap-2">
+            <View
+              className={`w-3 h-3 rounded-full ${
+                notifPermission === "granted" ? "bg-green-500" : notifPermission === "denied" ? "bg-red-500" : "bg-primary/40"
+              }`}
+            />
+            <Text className="text-primary text-base">
+              {notifPermission === "granted"
+                ? t("notifications_enabled")
+                : notifPermission === "denied"
+                  ? t("notifications_disabled")
+                  : t("notifications_checking")}
+            </Text>
+          </View>
+        </View>
+        {notifPermission !== "granted" && (
+          <Pressable
+            onPress={() => Linking.openSettings()}
+            className="active:opacity-70 items-center justify-center p-4 rounded-xl border border-primary"
+          >
+            <Text className="text-primary font-semibold">{t("open_settings")}</Text>
+          </Pressable>
+        )}
+      </View>
+
+      <View className="border-b border-muted" />
+
+      {/* Notification Sound */}
+      <View className="px-2 py-4">
+        <Text className="text-primary font-semibold mb-2 text-xl">{t("notification_sound_heading")}</Text>
+        <Text className="text-primary/60 text-sm mb-4">{t("notification_sound_desc")}</Text>
+        <Pressable
+          onPress={() => setShowSoundPicker(true)}
+          className="active:opacity-70 flex-row items-center justify-between bg-card border border-primary/20 rounded-2xl px-4 py-3"
+        >
+          <Text className="text-primary text-base">{t("sound_n", { n: soundIndex + 1 })}</Text>
+          <Ionicons name="chevron-down" size={20} color={primaryColor} />
+        </Pressable>
+      </View>
+
+      <Modal
+        visible={showSoundPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={closeSoundPicker}
+      >
+        <Pressable
+          className="flex-1 bg-black/60 justify-center items-center px-6"
+          onPress={closeSoundPicker}
+        >
+          <Pressable className="bg-background rounded-3xl p-6 w-full gap-3" onPress={() => {}}>
+            <Text className="text-xl font-bold text-primary mb-2">{t("notification_sound_heading")}</Text>
+            {SOUND_FILES.map((_, i) => {
+              const selected = soundIndex === i;
+              return (
+                <Pressable
+                  key={i}
+                  onPress={() => selectSound(i)}
+                  className={`active:opacity-70 flex-row items-center justify-between rounded-2xl p-4 w-full border-2 ${
+                    selected ? "bg-primary border-primary" : "bg-card border-muted"
+                  }`}
+                >
+                  <Text className={`text-base font-bold ${selected ? "text-background" : "text-primary"}`}>
+                    {t("sound_n", { n: i + 1 })}
+                  </Text>
+                  {selected && <Ionicons name="checkmark" size={20} color={bgColor} />}
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <View className="border-b border-muted" />
+
+      {/* Pillbox — patient only; caretakers reach this via patient detail */}
+      {role === "patient" && (
+        <>
+          <View className="px-2 py-4">
+            <Text className="text-primary font-semibold mb-2 text-xl">{t("pillbox_setup_heading")}</Text>
+            <Text className="text-primary/60 text-sm mb-4">{t("pillbox_setup_desc")}</Text>
+            <Pressable
+              onPress={() => router.push("/pillbox-setup")}
+              className="active:opacity-70 flex-row items-center justify-between bg-card border border-primary/20 rounded-2xl px-4 py-3"
+            >
+              <View className="flex-row items-center gap-3">
+                <Ionicons name="hardware-chip-outline" size={20} color={primaryColor} />
+                <Text className="text-primary text-base font-medium">{t("pillbox_setup")}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={primaryColor} />
+            </Pressable>
+          </View>
+
+          <View className="border-b border-muted" />
+        </>
+      )}
+
       {/* Notification Debug Toggle */}
       <View className="px-2 py-4">
         <Text className="text-primary font-semibold mb-2 text-xl">{t("debug_notifications_toggle")}</Text>
@@ -370,7 +536,16 @@ export default function SettingsScreen() {
       {/* Sign Out */}
       <Pressable
         className="active:opacity-70 flex-row items-center justify-center gap-2 bg-red-500 rounded-2xl p-4 mt-6"
-        onPress={() => signOut({ redirectUrl: "/(auth)" })}
+        onPress={async () => {
+          if (user) {
+            // 1. Drain the outbox so any pending edits/deletes reach the other
+            //    side BEFORE this device's data may be wiped on next sign-in.
+            try { await flushOutboxOnce(db, user.id); } catch (e) { console.warn("pre-signout flush failed", e); }
+            // 2. Snapshot the (now-flushed) local state for fresh-install restore.
+            try { await writeSnapshot(user.id, db); } catch (e) { console.warn("pre-signout snapshot failed", e); }
+          }
+          signOut({ redirectUrl: "/(auth)" });
+        }}
       >
         <Ionicons name="log-out-outline" size={20} color="white" />
         <Text className="text-white font-bold text-base">{t("sign_out")}</Text>
@@ -402,6 +577,7 @@ export default function SettingsScreen() {
         onCancel={() => setDeleteConfirmVisible(false)}
         onConfirm={handleDeleteAccount}
       />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

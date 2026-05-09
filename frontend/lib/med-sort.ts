@@ -21,6 +21,106 @@ export function isLowStock(med: Schedule): boolean {
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+export interface TodayDose {
+  time: string;       // "HH:MM"
+  date: Date;         // today at that time
+  med: Schedule;
+}
+
+// One physical pillbox slot — one unique time-of-day, possibly multiple meds.
+export interface TodaySlot {
+  time: string;       // "HH:MM"
+  date: Date;
+  meds: Schedule[];   // all meds firing at this time
+}
+
+// Recurring slot rule for the pillbox (Option B: weekly recurrence on the device).
+// dayMask bits: bit 0 = Sun, 1 = Mon, ..., 6 = Sat.
+export interface SlotRule {
+  time: string;
+  hour: number;
+  minute: number;
+  dayMask: number;
+  meds: Schedule[];
+}
+
+const DAY_BIT: Record<string, number> = {
+  Sun: 1, Mon: 2, Tue: 4, Wed: 8, Thu: 16, Fri: 32, Sat: 64,
+};
+
+// Group active medications into recurring rules: one rule per unique time-of-day,
+// dayMask = OR of repeat_days across all meds firing at that time.
+export function getWeeklySlotRules(meds: Schedule[], today = new Date()): SlotRule[] {
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const byTime = new Map<string, { meds: Schedule[]; dayMask: number }>();
+  for (const med of meds) {
+    if (med.kind && med.kind !== "medication") continue;
+    if (med.start_date && med.start_date > todayStr) continue;
+    if (med.end_date && med.end_date < todayStr) continue;
+    let medMask = 0;
+    for (const d of (med.repeat_days ?? "").split(",")) {
+      medMask |= DAY_BIT[d.trim()] ?? 0;
+    }
+    if (medMask === 0) continue;
+    for (const t of (med.whenToTake ?? "").split(",").filter(Boolean)) {
+      const [hh, mm] = t.split(":").map(Number);
+      if (Number.isNaN(hh) || Number.isNaN(mm)) continue;
+      if (!byTime.has(t)) byTime.set(t, { meds: [], dayMask: 0 });
+      const entry = byTime.get(t)!;
+      entry.meds.push(med);
+      entry.dayMask |= medMask;
+    }
+  }
+  const result: SlotRule[] = [];
+  for (const [time, { meds: m, dayMask }] of byTime) {
+    const [hh, mm] = time.split(":").map(Number);
+    result.push({ time, hour: hh, minute: mm, dayMask, meds: m });
+  }
+  result.sort((a, b) => a.time.localeCompare(b.time));
+  return result;
+}
+
+export function getTodayDoses(meds: Schedule[], now = new Date()): TodayDose[] {
+  const todayName = DAY_NAMES[now.getDay()];
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const doses: TodayDose[] = [];
+  for (const med of meds) {
+    if (med.kind && med.kind !== "medication") continue;
+    if (!med.repeat_days?.includes(todayName)) continue;
+    if (med.start_date && med.start_date > todayStr) continue;
+    if (med.end_date && med.end_date < todayStr) continue;
+    for (const t of (med.whenToTake ?? "").split(",").filter(Boolean)) {
+      const [hh, mm] = t.split(":").map(Number);
+      if (Number.isNaN(hh) || Number.isNaN(mm)) continue;
+      const d = new Date(now);
+      d.setHours(hh, mm, 0, 0);
+      doses.push({ time: t, date: d, med });
+    }
+  }
+  doses.sort((a, b) => a.time.localeCompare(b.time));
+  return doses;
+}
+
+// Group today's doses by time-of-day so each unique time is one slot.
+// Same time + different meds = one slot with multiple meds.
+// Same med + different times = different slots.
+export function getTodaySlots(meds: Schedule[], now = new Date()): TodaySlot[] {
+  const byTime = new Map<string, Schedule[]>();
+  for (const dose of getTodayDoses(meds, now)) {
+    if (!byTime.has(dose.time)) byTime.set(dose.time, []);
+    byTime.get(dose.time)!.push(dose.med);
+  }
+  const slots: TodaySlot[] = [];
+  for (const [time, slotMeds] of byTime) {
+    const [hh, mm] = time.split(":").map(Number);
+    const d = new Date(now);
+    d.setHours(hh, mm, 0, 0);
+    slots.push({ time, date: d, meds: slotMeds });
+  }
+  slots.sort((a, b) => a.time.localeCompare(b.time));
+  return slots;
+}
+
 export interface UpcomingSlot {
   time: string;
   dayOffset: number;

@@ -69,6 +69,19 @@ export default function PatientDetailScreen() {
         options={{ headerShown: true, title: patientName ?? t("patient_default_label") }}
       />
 
+      <View className="flex-row items-center gap-4 px-6 pt-6 pb-6 bg-background">
+        <Pressable
+          className="active:opacity-70"
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
+        </Pressable>
+        <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>
+          {patientName ?? t("patient_default_label")}
+        </Text>
+      </View>
+
       <FlatList
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         data={[]}
@@ -84,17 +97,6 @@ export default function PatientDetailScreen() {
           <>
             {/* Patient info */}
             <View className="items-center mb-6 gap-2">
-              <Pressable
-                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-                onPress={() => router.back()}
-                className="active:opacity-70 self-start mb-2"
-              >
-                <Ionicons
-                  name="arrow-back-outline"
-                  size={24}
-                  color={brandColor}
-                />
-              </Pressable>
               {patientImage ? (
                 <Image
                   source={{ uri: patientImage }}
@@ -112,6 +114,23 @@ export default function PatientDetailScreen() {
                 {patientName}
               </Text>
             </View>
+
+            {/* Pillbox push (when caretaker is physically near the patient's pillbox) */}
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/pillbox-setup",
+                  params: { patientId: id, patientName: patientName ?? "" },
+                })
+              }
+              className="active:opacity-70 flex-row items-center justify-between bg-card border border-primary/20 rounded-2xl px-4 py-3 mb-6"
+            >
+              <View className="flex-row items-center gap-3">
+                <Ionicons name="hardware-chip-outline" size={20} color={brandColor} />
+                <Text className="text-primary text-base font-medium">{t("pillbox_setup")}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={brandColor} />
+            </Pressable>
 
             {/* Upcoming schedule carousel */}
             <Text className="text-lg font-bold text-primary mb-3">

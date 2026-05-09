@@ -167,10 +167,10 @@ export default function MeasurementDetailScreen() {
   const kindIcon = med.kind === "blood_pressure" ? "heart-outline" : "water-outline";
 
   return (
-    <ScrollView className="bg-background px-4 pt-4 h-full">
+    <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: true, title: t("detail") }} />
 
-      <View className="flex-row items-center justify-between p-2 mb-4">
+      <View className="flex-row items-center justify-between gap-4 px-6 pt-6 pb-6 bg-background">
         <View className="flex-row items-center gap-3 flex-1">
           <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
             <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
@@ -189,6 +189,7 @@ export default function MeasurementDetailScreen() {
         )}
       </View>
 
+      <ScrollView className="px-4">
       {/* Schedule */}
       <Card>
         <Row label={t("schedule")} required info={t("info_measurement_schedule")}>
@@ -290,6 +291,7 @@ export default function MeasurementDetailScreen() {
         onCancel={() => setDeleteConfirmVisible(false)}
         onConfirm={confirmDeleteMed}
       />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

@@ -1,3 +1,4 @@
+import { BackHeader } from "@/components/back-header";
 import { FieldLabel } from "@/components/field-label";
 import { useToast } from "@/context/toast-context";
 import { insertScheduleAndSync, updateScheduleAndSync } from "@/db/sync-helpers";
@@ -110,16 +111,10 @@ export default function ConfirmMedicationScreen() {
   };
 
   return (
-    <ScrollView className="bg-background px-4 pt-4 h-full" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+    <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: true, title: t("confirm_medication_title") }} />
-
-      <View className="flex-row items-center gap-4 p-2 mb-4">
-        <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
-        </Pressable>
-        <Text className="text-2xl font-bold text-primary">{t("review_details")}</Text>
-      </View>
-
+      <BackHeader title={t("review_details")} />
+      <ScrollView className="px-4" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       {/* Medicine Image */}
       <View className="gap-2 px-2 mb-4">
         <FieldLabel label={t("medicine_image")} info={t("info_medicine_image")} />
@@ -331,6 +326,7 @@ export default function ConfirmMedicationScreen() {
                   stock: parseInt(stock) || 0,
                   count: parseInt(amount) || 1,
                   startDate: toLocalISODate(startDate),
+                  endDate: expirationDate ? toLocalISODate(expirationDate) : null,
                   patientId: pid,
                 });
                 await updateScheduleAndSync(db, user.id, role, id, { notification_id: notifIds });
@@ -348,9 +344,10 @@ export default function ConfirmMedicationScreen() {
         </Pressable>
       </View>
 
+      </ScrollView>
       <DateTimePickerModal isVisible={isTimePickerVisible} mode="time" date={pickerDate} onConfirm={handleTimeConfirm} onCancel={() => { setEditingTimeIndex(null); setTimePickerVisible(false); }} />
       <DateTimePickerModal isVisible={isStartDatePickerVisible} mode="date" onConfirm={(d) => { setStartDate(d); setStartDatePickerVisible(false); }} onCancel={() => setStartDatePickerVisible(false)} />
       <DateTimePickerModal isVisible={isExpiryPickerVisible} mode="date" onConfirm={(d) => { setExpirationDate(d); setExpiryPickerVisible(false); }} onCancel={() => setExpiryPickerVisible(false)} />
-    </ScrollView>
+    </View>
   );
 }

@@ -3,6 +3,11 @@ import { ToastProvider } from "@/context/toast-context";
 import { initializeDatabase } from "@/db/initialize";
 import { useSecureStorage } from "@/hooks/use-securestore";
 import { ClerkLoaded, ClerkProvider } from "@clerk/expo";
+import Feather from "@expo/vector-icons/Feather";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
@@ -32,6 +37,15 @@ export default function RootLayout() {
   const { initialize, getValue } = useSecureStorage();
   const [isReady, setIsReady] = useState(false);
 
+  // Preload icon fonts so they're guaranteed registered before any icon renders.
+  // Without this, lazy font loading inside @expo/vector-icons can fail offline.
+  const [fontsLoaded] = useFonts({
+    ...Ionicons.font,
+    ...Feather.font,
+    ...FontAwesome.font,
+    ...FontAwesome6.font,
+  });
+
   useEffect(() => {
     const setup = async () => {
       const savedScheme = await getValue("colorScheme");
@@ -46,7 +60,7 @@ export default function RootLayout() {
     setup();
   }, []);
 
-  if (!isReady) return null;
+  if (!isReady || !fontsLoaded) return null;
 
   return (
     <ClerkProvider publishableKey={publishableKey}>

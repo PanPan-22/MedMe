@@ -1,4 +1,4 @@
-import { cancelNotificationsForMed, scheduleNotificationsForMed } from "@/hooks/use-notifications";
+import { cancelNotificationsForMed, reconcileNotifications, scheduleNotificationsForMed } from "@/hooks/use-notifications";
 import * as SQLite from "expo-sqlite";
 import { readUserProfile } from "./firestore-ops";
 import { SyncEvent } from "./sync-types";
@@ -122,6 +122,7 @@ async function applyScheduleUpsert(ctx: ApplyContext, event: SyncEvent) {
       stock: p.stock ?? 0,
       count: p.count ?? 1,
       startDate: p.start_date,
+      endDate: p.end_date,
       patientId: localPatientId,
     });
     await ctx.db.runAsync(`UPDATE schedules SET notification_id = ? WHERE sync_id = ?`, [newIds, syncId]);
@@ -142,20 +143,22 @@ async function applyScheduleDelete(ctx: ApplyContext, event: SyncEvent) {
   }
   const result = await ctx.db.runAsync(`DELETE FROM schedules WHERE sync_id = ?`, [syncId]);
   console.log(`[sync] deleted ${result.changes} row(s) for sync_id ${syncId.slice(0, 8)}`);
+  // Catch any orphan OS notifications now that the row is gone.
+  reconcileNotifications(ctx.db).catch((e) => console.warn("post-delete reconcile failed", e));
 }
 
-async function applyLogUpsert(ctx: ApplyContext, event: SyncEvent) {
+async function applyLogUpsert(ctx: ApplyContext, event: SyncEvent): Promise<boolean> {
   const p = event.payload;
   const syncId: string = p.sync_id;
-  if (!syncId) return;
+  if (!syncId) return true;
 
   const existing = await findLogBySyncId(ctx.db, syncId);
-  if (existing && !shouldApply(existing.updated_at, event.sourceUpdatedAt)) return;
+  if (existing && !shouldApply(existing.updated_at, event.sourceUpdatedAt)) return true;
 
   let localPatientId: number | null = null;
   if (ctx.selfRole === "caretaker") {
     localPatientId = await resolvePatientLocalId(ctx.db, p.patient_clerk_id);
-    if (localPatientId == null) return;
+    if (localPatientId == null) return false;  // retry: patient row not yet local
   }
 
   // Resolve schedule by sync_id only; the sender's local schedule_id is meaningless
@@ -168,8 +171,8 @@ async function applyLogUpsert(ctx: ApplyContext, event: SyncEvent) {
   const scheduleId =
     scheduleRow?.id ?? (ctx.selfRole === "patient" ? p.schedule_id ?? null : null);
   if (scheduleId == null) {
-    console.warn(`[sync] log event ignored — schedule sync_id ${(p.schedule_sync_id ?? "").slice(0, 8)} not yet local`);
-    return;
+    // Schedule hasn't arrived yet — signal retry so the event isn't dropped.
+    return false;
   }
 
   await ctx.db.runAsync(
@@ -186,6 +189,7 @@ async function applyLogUpsert(ctx: ApplyContext, event: SyncEvent) {
        value = excluded.value`,
     [syncId, scheduleId, p.scheduled_time, p.log_date, p.timestamp, p.status, localPatientId, event.sourceUpdatedAt, p.value ?? null],
   );
+  return true;
 }
 
 async function applyLogDelete(ctx: ApplyContext, event: SyncEvent) {
@@ -200,18 +204,20 @@ async function applyLinkRemove(ctx: ApplyContext, _event: SyncEvent) {
   }
 }
 
-export async function applyEvent(ctx: ApplyContext, event: SyncEvent): Promise<void> {
+// Returns true if the event was applied (or intentionally a no-op), false if
+// it should be retried later (e.g. log arrived before its schedule).
+export async function applyEvent(ctx: ApplyContext, event: SyncEvent): Promise<boolean> {
   switch (event.type) {
-    case "schedule.upsert": return applyScheduleUpsert(ctx, event);
-    case "schedule.delete": return applyScheduleDelete(ctx, event);
-    case "log.upsert": return applyLogUpsert(ctx, event);
-    case "log.delete": return applyLogDelete(ctx, event);
-    case "link.remove": return applyLinkRemove(ctx, event);
+    case "schedule.upsert": await applyScheduleUpsert(ctx, event); return true;
+    case "schedule.delete": await applyScheduleDelete(ctx, event); return true;
+    case "log.upsert": return await applyLogUpsert(ctx, event);
+    case "log.delete": await applyLogDelete(ctx, event); return true;
+    case "link.remove": await applyLinkRemove(ctx, event); return true;
     case "patient.roster.upsert":
     case "patient.roster.delete":
     case "link.create":
-      return;
+      return true;
     default:
-      return;
+      return true;
   }
 }

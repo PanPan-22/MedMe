@@ -2,7 +2,6 @@ import { useAuth, useUser } from "@clerk/expo";
 import Feather from "@expo/vector-icons/Feather";
 import * as Notifications from "expo-notifications";
 import { useBrandColor } from "@/hooks/use-brand-color";
-import { useNotificationReconcile } from "@/hooks/use-notification-reconcile";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useSyncEngine } from "@/hooks/use-sync-engine";
 import { useSyncPresence } from "@/hooks/use-sync-presence";
@@ -14,10 +13,12 @@ import { useEffect } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+const SETTINGS_DESCENDANT_PATHS = ["/settings", "/pillbox-setup"];
+
 function AppHeader({ displayName }: { displayName: string }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  const isSettings = pathname === "/settings";
+  const hideSettingsLink = SETTINGS_DESCENDANT_PATHS.includes(pathname);
   const { background } = useBrandColor();
   const { colorScheme } = useColorScheme();
   return (
@@ -34,7 +35,7 @@ function AppHeader({ displayName }: { displayName: string }) {
       >
         {displayName}
       </Text>
-      {!isSettings && (
+      {!hideSettingsLink && (
         <Link href="/settings" push asChild>
           <Pressable className="active:opacity-70" hitSlop={16}>
             <Feather name="settings" size={24} color={background} />
@@ -50,9 +51,8 @@ export default function AppLayout() {
   const { user } = useUser();
   const { colorScheme } = useColorScheme();
   const bg = colorScheme === "dark" ? "#0a1410" : "#f2fbf5";
-  useUserBoundary();
+  useUserBoundary();        // wipes + restores + reconciles notifications, in that order
   useNotifications();
-  useNotificationReconcile();
   useSyncPresence();
   useSyncEngine();
 

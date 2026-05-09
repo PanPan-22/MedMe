@@ -1,4 +1,4 @@
-import { cancelNotificationsForMed } from "@/hooks/use-notifications";
+import { cancelNotificationsForMed, reconcileNotifications, scheduleNotificationsForMed } from "@/hooks/use-notifications";
 import * as SQLite from "expo-sqlite";
 import { enqueue, getLink, newId, nowIso } from "./sync-db";
 
@@ -132,6 +132,33 @@ export async function updateScheduleAndSync(
     ],
   );
 
+  // Reconcile OS-scheduled notifications with the new fields — but ONLY if
+  // the caller didn't already do this themselves. Edit screens like
+  // management/[id], manual-add, confirm-medication, notification-modal do
+  // their own cancel-old + schedule-new and pass the result via
+  // fields.notification_id; auto-rescheduling here would double-schedule and
+  // orphan the caller's IDs. So skip when notification_id is explicitly set.
+  if (fields.notification_id === undefined) {
+    if (existing.notification_id) {
+      try { await cancelNotificationsForMed(existing.notification_id); } catch { /* already gone */ }
+    }
+    try {
+      const newIds = await scheduleNotificationsForMed({
+        medicineName: merged.medicine_name,
+        whenToTake: merged.whenToTake ?? "",
+        repeatDays: merged.repeat_days ?? "",
+        stock: merged.stock,
+        count: merged.count ?? 1,
+        startDate: merged.start_date,
+        endDate: merged.end_date,
+        patientId: existing.patient_id,
+      });
+      await db.runAsync(`UPDATE schedules SET notification_id = ? WHERE id = ?`, [newIds, localId]);
+    } catch (e) {
+      console.warn("[updateScheduleAndSync] failed to reschedule notifications", e);
+    }
+  }
+
   const { targetClerkId, patientClerkId } = await resolveTarget(db, selfClerkId, selfRole, existing.patient_id);
   if (targetClerkId && patientClerkId) {
     await enqueue(db, {
@@ -163,6 +190,11 @@ export async function deleteScheduleAndSync(
     try { await cancelNotificationsForMed(existing.notification_id); } catch { /* already gone */ }
   }
   await db.runAsync(`DELETE FROM schedules WHERE id = ?`, [localId]);
+
+  // Clean up any orphan OS notifications (IDs that weren't tracked in
+  // notification_id but were really scheduled — happens when prior CRUDs
+  // partially failed). Without this they linger until next app launch.
+  reconcileNotifications(db).catch((e) => console.warn("post-delete reconcile failed", e));
 
   const syncId = existing.sync_id;
   if (!syncId) return;

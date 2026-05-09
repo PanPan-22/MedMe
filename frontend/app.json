@@ -4,7 +4,7 @@
     "slug": "MedMe",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/medmeicon.png",
     "scheme": "medme",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -12,14 +12,15 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.suphasan.medme",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        },
+        "NSLocalNetworkUsageDescription": "MedMe needs access to your local network to communicate with your MedMe Pillbox."
       }
     },
     "android": {
       "permissions": [
-        "android.permission.SCHEDULE_EXACT_ALARM",
-        "android.permission.USE_EXACT_ALARM",
-        "android.permission.RECORD_AUDIO",
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.USE_EXACT_ALARM",
         "android.permission.RECORD_AUDIO"
@@ -76,7 +77,10 @@
         {
           "sounds": [
             "./assets/audios/universfield_023.wav",
-            "./assets/audios/universfield_029.wav"
+            "./assets/audios/universfield_029.wav",
+            "./assets/audios/universfield_030.wav",
+            "./assets/audios/universfield_088.wav",
+            "./assets/audios/universfield_091.wav"
           ]
         }
       ],
@@ -87,7 +91,8 @@
           "photosPermission": "MedMe needs access to your photos to set a profile picture."
         }
       ],
-      "@clerk/expo"
+      "@clerk/expo",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true,

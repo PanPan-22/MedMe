@@ -1,3 +1,4 @@
+import { BackHeader } from "@/components/back-header";
 import { useBrandColor } from "@/hooks/use-brand-color";
 import { toLocalISODate } from "@/lib/date";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -161,17 +162,9 @@ export default function RecordScreen() {
     <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: true, title: t("record") }} />
 
-      <View className="px-4 pt-4">
-        {/* Header row */}
-        <View className="flex-row items-center gap-4 mb-4">
-          <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-            <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
-          </Pressable>
-          <Text className="text-2xl font-bold text-primary flex-1" numberOfLines={1}>
-            {patientName ? `${patientName} — ${t("record")}` : t("record")}
-          </Text>
-        </View>
+      <BackHeader title={patientName ? `${patientName} — ${t("record")}` : t("record")} />
 
+      <View className="px-4">
         {/* Date filter */}
         <View className="flex-row gap-2 mb-4">
           {PRESETS.map((days) => (

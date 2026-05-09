@@ -1,7 +1,7 @@
+import { BackHeader } from "@/components/back-header";
 import { useBrandColor } from "@/hooks/use-brand-color";
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import NetInfo from "@react-native-community/netinfo";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
@@ -16,7 +16,10 @@ export default function AddMedicineScreen() {
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
-      setIsConnected(state.isConnected);
+      // isConnected = on a network; isInternetReachable = that network has internet.
+      // Pillbox AP returns isConnected=true but isInternetReachable=false.
+      const reachable = state.isInternetReachable ?? state.isConnected;
+      setIsConnected(state.isConnected === true && reachable !== false);
     });
     return () => unsubscribe();
   }, []);
@@ -24,14 +27,10 @@ export default function AddMedicineScreen() {
   const extraParams = patientId ? { patientId, patientName: patientName ?? "" } : {};
 
   return (
-    <ScrollView className="bg-background px-4 pt-4 h-full">
+    <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: true, title: t("add_schedule") }} />
-      <View className="flex-row items-center gap-4 p-2 mb-4">
-        <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
-        </Pressable>
-        <Text className="text-2xl font-bold text-primary">{t("add_schedule")}</Text>
-      </View>
+      <BackHeader title={t("add_schedule")} />
+      <ScrollView className="px-4">
       <View className="flex-column items-center justify-around gap-4 p-2 mb-4 w-full">
         <Pressable
           disabled={!isConnected}
@@ -62,6 +61,7 @@ export default function AddMedicineScreen() {
           </Text>
         </Pressable>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

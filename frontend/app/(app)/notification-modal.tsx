@@ -84,6 +84,7 @@ export default function NotificationModal() {
           stock: newStock,
           count: med.count ?? 1,
           startDate: med.start_date,
+          endDate: med.end_date,
           patientId: med.patient_id,
         });
 

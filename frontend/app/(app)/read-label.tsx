@@ -1,3 +1,4 @@
+import { BackHeader } from "@/components/back-header";
 import { useToast } from "@/context/toast-context";
 import { useBrandColor } from "@/hooks/use-brand-color";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -198,14 +199,10 @@ export default function MedicineScreen() {
   };
 
   return (
-    <ScrollView className="bg-background px-4 pt-4 h-full">
+    <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: true, title: t("read_label") }} />
-      <View className="flex-row items-center gap-4 p-2 mb-4">
-        <Pressable className="active:opacity-70" hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={24} color={brandColor} />
-        </Pressable>
-        <Text className="text-2xl font-bold text-primary">{t("read_label")}</Text>
-      </View>
+      <BackHeader title={t("read_label")} />
+      <ScrollView className="px-4">
       <View className="gap-2 px-2 mb-4">
         <Text className="text-base font-semibold text-primary">{t("medicine_image")}</Text>
         <Pressable
@@ -252,6 +249,7 @@ export default function MedicineScreen() {
           </Pressable>
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

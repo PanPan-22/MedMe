@@ -111,6 +111,19 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
       try { await db.execAsync(sql); } catch { /* already exists */ }
     }
 
+    // Collect notification_ids on schedule rows about to be deleted by dedup,
+    // so we (or useNotificationReconcile) can cancel them. We just clear the
+    // notification_id column on the soon-to-be-deleted rows; the keeper row's
+    // notification_id stays. Reconcile then sees mismatched OS notifications
+    // not claimed by any DB row and cancels them.
+    try {
+      await db.execAsync(`
+        UPDATE schedules SET notification_id = NULL
+        WHERE sync_id IS NOT NULL
+          AND id NOT IN (SELECT MIN(id) FROM schedules WHERE sync_id IS NOT NULL GROUP BY sync_id)
+      `);
+    } catch (e) { console.warn("dedup notif clear failed", e); }
+
     const dedup = [
       `DELETE FROM schedules WHERE sync_id IS NOT NULL AND id NOT IN (SELECT MIN(id) FROM schedules WHERE sync_id IS NOT NULL GROUP BY sync_id)`,
       `DELETE FROM logs WHERE sync_id IS NOT NULL AND id NOT IN (SELECT MIN(id) FROM logs WHERE sync_id IS NOT NULL GROUP BY sync_id)`,
