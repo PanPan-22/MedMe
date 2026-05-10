@@ -225,14 +225,36 @@ export async function insertLogAndSync(
   selfRole: Role,
   input: LogInsertInput,
 ): Promise<void> {
-  const syncId = newId();
   const updatedAt = nowIso();
-  await db.runAsync(
-    `INSERT INTO logs
-      (sync_id, schedule_id, scheduled_time, log_date, timestamp, status, patient_id, updated_at, value)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [syncId, input.schedule_id, input.scheduled_time, input.log_date, input.timestamp, input.status, input.patient_id, updatedAt, input.value ?? null],
+
+  // Idempotency: a log for the same (schedule, scheduled_time, log_date)
+  // already represents this dose. Update it instead of inserting a duplicate.
+  // This protects against double-taps (multiple notifications fire at one
+  // time slot, user taps two of them — the modal logs every med both times).
+  const existing = await db.getFirstAsync<{ id: number; sync_id: string | null }>(
+    `SELECT id, sync_id FROM logs WHERE schedule_id = ? AND scheduled_time = ? AND log_date = ?`,
+    [input.schedule_id, input.scheduled_time, input.log_date],
   );
+
+  let syncId: string;
+  if (existing) {
+    syncId = existing.sync_id ?? newId();
+    if (!existing.sync_id) {
+      await db.runAsync(`UPDATE logs SET sync_id = ? WHERE id = ?`, [syncId, existing.id]);
+    }
+    await db.runAsync(
+      `UPDATE logs SET status = ?, timestamp = ?, value = ?, updated_at = ? WHERE id = ?`,
+      [input.status, input.timestamp, input.value ?? null, updatedAt, existing.id],
+    );
+  } else {
+    syncId = newId();
+    await db.runAsync(
+      `INSERT INTO logs
+        (sync_id, schedule_id, scheduled_time, log_date, timestamp, status, patient_id, updated_at, value)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [syncId, input.schedule_id, input.scheduled_time, input.log_date, input.timestamp, input.status, input.patient_id, updatedAt, input.value ?? null],
+    );
+  }
 
   const scheduleRow = await db.getFirstAsync<{ sync_id: string | null }>(
     `SELECT sync_id FROM schedules WHERE id = ?`,

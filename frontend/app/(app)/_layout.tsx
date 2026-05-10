@@ -57,9 +57,29 @@ export default function AppLayout() {
   useSyncEngine();
 
   useEffect(() => {
+    // When a notification is tapped, dismiss all currently-presented siblings
+    // (same time slot — same threadIdentifier). Multiple meds at the same time
+    // are still scheduled separately and beep/show individually, but tapping
+    // any one clears the rest from the lockscreen / tray.
+    const dismissSiblings = async (tappedThreadId: string | null | undefined) => {
+      if (!tappedThreadId) return;
+      try {
+        const presented = await Notifications.getPresentedNotificationsAsync();
+        for (const n of presented) {
+          if (n.request.content.threadIdentifier === tappedThreadId) {
+            try { await Notifications.dismissNotificationAsync(n.request.identifier); } catch { /* ignore */ }
+          }
+        }
+      } catch (e) {
+        console.warn("[notif] dismiss siblings failed", e);
+      }
+    };
+
     // Handle notification tap (app already open or resuming from background)
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as any;
+      const threadId = response.notification.request.content.threadIdentifier;
+      dismissSiblings(threadId);
       if (data?.time) {
         router.push({
           pathname: "/notification-modal",
@@ -72,6 +92,8 @@ export default function AppLayout() {
     Notifications.getLastNotificationResponseAsync().then((response) => {
       if (response?.notification.request.content.data) {
         const data = response.notification.request.content.data as any;
+        const threadId = response.notification.request.content.threadIdentifier;
+        dismissSiblings(threadId);
         if (data?.time) {
           router.push({
             pathname: "/notification-modal",

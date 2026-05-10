@@ -7,6 +7,7 @@ import Feather from "@expo/vector-icons/Feather";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { setAudioModeAsync } from "expo-audio";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { SQLiteProvider } from "expo-sqlite";
@@ -45,6 +46,17 @@ export default function RootLayout() {
     ...FontAwesome.font,
     ...FontAwesome6.font,
   });
+
+  // Make in-app sound previews (notification sound picker) play even when the
+  // phone is in silent mode. iOS notifications already bypass silent via the
+  // notification system, but expo-audio's playback respects the silent switch
+  // by default — leaving the preview silent for users who keep their phone
+  // muted. This flips that.
+  useEffect(() => {
+    setAudioModeAsync({ playsInSilentMode: true }).catch((e) =>
+      console.warn("setAudioModeAsync failed", e),
+    );
+  }, []);
 
   useEffect(() => {
     const setup = async () => {
