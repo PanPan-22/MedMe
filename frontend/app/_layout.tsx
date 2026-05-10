@@ -3,6 +3,7 @@ import { ToastProvider } from "@/context/toast-context";
 import { initializeDatabase } from "@/db/initialize";
 import { useSecureStorage } from "@/hooks/use-securestore";
 import { ClerkLoaded, ClerkProvider } from "@clerk/expo";
+import { tokenCache } from "@clerk/expo/token-cache";
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
@@ -75,7 +76,7 @@ export default function RootLayout() {
   if (!isReady || !fontsLoaded) return null;
 
   return (
-    <ClerkProvider publishableKey={publishableKey}>
+    <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <ClerkLoaded>
         <View className={`flex-1 ${colorScheme === "dark" ? "dark" : "light"}`}>
           {/* Default matches bg-background; AppHeader overrides for bg-primary contexts. */}
