@@ -234,11 +234,5 @@
   "pillbox_days_daily": "Daily",
   "pillbox_days_weekdays": "Mon-Fri",
   "pillbox_days_weekends": "Sat-Sun",
-  "pillbox_open_wifi_settings": "Open Wi-Fi Settings",
-  "pillbox_connect": "Connect to Pillbox",
-  "pillbox_connecting": "Connecting…",
-  "pillbox_connect_failed": "Could not connect. Make sure the pillbox is powered on and nearby.",
-  "pillbox_connect_timeout": "Pillbox not found. Make sure it's powered on and within range, then try again.",
-  "pillbox_permission_required": "Location permission is required to find your pillbox.",
-  "pillbox_connect_ios_unsupported": "Auto-connect isn't supported on this platform. Use Wi-Fi Settings instead."
+  "pillbox_open_wifi_settings": "Open Wi-Fi Settings"
 }

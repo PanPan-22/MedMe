@@ -22,12 +22,7 @@
       "permissions": [
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.USE_EXACT_ALARM",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.NEARBY_WIFI_DEVICES",
-        "android.permission.CHANGE_NETWORK_STATE",
-        "android.permission.CHANGE_WIFI_STATE",
-        "android.permission.ACCESS_WIFI_STATE",
-        "android.permission.ACCESS_NETWORK_STATE"
+        "android.permission.RECORD_AUDIO"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/medmeicon_foreground.png",
@@ -92,8 +87,7 @@
       ],
       "@clerk/expo",
       "expo-audio",
-      "expo-web-browser",
-      "react-native-wifi-reborn"
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -544,7 +544,9 @@ export default function SettingsScreen() {
             // 2. Snapshot the (now-flushed) local state for fresh-install restore.
             try { await writeSnapshot(user.id, db); } catch (e) { console.warn("pre-signout snapshot failed", e); }
           }
-          signOut({ redirectUrl: "/(auth)" });
+          // (app)/_layout's auth check redirects to /(auth) automatically once
+          // isSignedIn flips. No need to pass redirectUrl (that's for OAuth web).
+          try { await signOut(); } catch (e) { console.warn("signOut failed", e); }
         }}
       >
         <Ionicons name="log-out-outline" size={20} color="white" />

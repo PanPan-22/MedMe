@@ -12,29 +12,16 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
-  PermissionsAndroid,
   Platform,
   Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
-import WifiManager from "react-native-wifi-reborn";
 
 const PILLBOX_HOST = "http://192.168.4.1";
-const PILLBOX_AP_PASSWORD = "12345678";
 const REQUEST_TIMEOUT_MS = 5000;
-const WIFI_CONNECT_TIMEOUT_MS = 15000;
 const MAX_SLOTS = 8;
-
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms),
-    ),
-  ]);
-}
 
 const THEME_COLORS = {
   light: { primary: "#062d13", background: "#f2fbf5" },
@@ -138,17 +125,6 @@ export default function PillboxSetupScreen() {
     getValue("debugNotifications").then((v) => setDebugEnabled(v === "true"));
   }, []);
 
-  // Release the app's Wi-Fi binding when leaving this screen so Firestore /
-  // other network calls go back through home Wi-Fi or cellular. Without this,
-  // the app stays locked to the pillbox AP (no internet) until restart.
-  useEffect(() => {
-    return () => {
-      if (Platform.OS === "android") {
-        WifiManager.forceWifiUsageWithOptions(false, { noInternet: false }).catch(() => {});
-      }
-    };
-  }, []);
-
   const loadRules = useCallback(async () => {
     const meds = pid != null
       ? await db.getAllAsync<Schedule>(
@@ -169,55 +145,6 @@ export default function PillboxSetupScreen() {
 
   // Mirror of what's actually scheduled on the device, fetched via /state.
   const [pillboxRules, setPillboxRules] = useState<DeviceRule[] | null>(null);
-  const [connecting, setConnecting] = useState(false);
-  const [connectError, setConnectError] = useState<string | null>(null);
-
-  // Auto-join any nearby "Pillbox_*" Wi-Fi AP. Android-only — iOS requires
-  // the paid Apple Developer "Hotspot Configuration" entitlement.
-  const connectToPillbox = async () => {
-    setConnectError(null);
-    if (Platform.OS !== "android") {
-      setConnectError(t("pillbox_connect_ios_unsupported"));
-      openWifiSettings();
-      return;
-    }
-    setConnecting(true);
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      );
-      if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-        // User permanently denied — only recoverable via app Settings.
-        setConnectError(t("pillbox_permission_required"));
-        Linking.openSettings();
-        return;
-      }
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        setConnectError(t("pillbox_permission_required"));
-        return;
-      }
-      await withTimeout(
-        WifiManager.connectToProtectedSSIDPrefix("Pillbox_", PILLBOX_AP_PASSWORD, false),
-        WIFI_CONNECT_TIMEOUT_MS,
-        "wifi-connect",
-      );
-      // Bind this app's traffic to the just-joined network. Without this, the
-      // phone's home Wi-Fi may still be the default route and our fetches
-      // would silently miss the pillbox at 192.168.4.1. noInternet: true tells
-      // Android the pillbox AP has no internet, so it doesn't fall back to
-      // cellular for our requests.
-      try {
-        await WifiManager.forceWifiUsageWithOptions(true, { noInternet: true });
-      } catch { /* ignore */ }
-      await testConnection();
-    } catch (e: any) {
-      console.warn("[pillbox] auto-connect failed", e);
-      const isTimeout = String(e?.message ?? "").includes("timeout");
-      setConnectError(isTimeout ? t("pillbox_connect_timeout") : t("pillbox_connect_failed"));
-    } finally {
-      setConnecting(false);
-    }
-  };
 
   const testConnection = async () => {
     setTesting(true);
@@ -393,27 +320,13 @@ export default function PillboxSetupScreen() {
         </View>
 
         {status === "not_connected" && (
-          <View className="mt-3 gap-2">
-            <Pressable
-              onPress={connectToPillbox}
-              disabled={connecting}
-              className="active:opacity-70 flex-row items-center justify-center gap-2 bg-primary rounded-2xl p-3 disabled:opacity-50"
-            >
-              {connecting ? (
-                <ActivityIndicator color={bgColor} />
-              ) : (
-                <Ionicons name="wifi" size={18} color={bgColor} />
-              )}
-              <Text className="text-background font-semibold">
-                {connecting ? t("pillbox_connecting") : t("pillbox_connect")}
-              </Text>
-            </Pressable>
-            {connectError && (
-              <Text className="text-red-500 text-sm text-center px-2">
-                {connectError}
-              </Text>
-            )}
-          </View>
+          <Pressable
+            onPress={openWifiSettings}
+            className="active:opacity-70 flex-row items-center justify-center gap-2 bg-primary/10 border border-primary rounded-2xl p-3 mt-3"
+          >
+            <Ionicons name="wifi" size={18} color={primaryColor} />
+            <Text className="text-primary font-semibold">{t("pillbox_open_wifi_settings")}</Text>
+          </Pressable>
         )}
 
         {status === "connected" && armedDevice.length > 0 && (
