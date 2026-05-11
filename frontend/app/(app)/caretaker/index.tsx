@@ -5,8 +5,9 @@ import { useSecureStorage } from "@/hooks/use-securestore";
 import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link, Redirect, router, Stack, useFocusEffect } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlatList, Image, Pressable, RefreshControl, Text, useWindowDimensions, View } from "react-native";
 
@@ -40,6 +41,11 @@ export default function CaretakerHome() {
     const id = setInterval(fetchData, 10_000);
     return () => clearInterval(id);
   }, []));
+
+  // Hide the splash once this home screen has mounted (smooth handoff).
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => { /* already hidden */ });
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

@@ -2,7 +2,7 @@ import ImageSheet from "@/components/image-picker-sheet";
 import { ToastProvider } from "@/context/toast-context";
 import { initializeDatabase } from "@/db/initialize";
 import { useSecureStorage } from "@/hooks/use-securestore";
-import { ClerkLoaded, ClerkProvider } from "@clerk/expo";
+import { ClerkProvider } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
@@ -11,8 +11,13 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { setAudioModeAsync } from "expo-audio";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
+
+// Keep the splash visible until the destination home screen (or auth layout)
+// explicitly hides it. Eliminates the blank-header gap between splash and home.
+SplashScreen.preventAutoHideAsync().catch(() => { /* already hidden */ });
 import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
 import { LogBox, Platform, Text, View } from "react-native";
@@ -73,11 +78,24 @@ export default function RootLayout() {
     setup();
   }, []);
 
+  // Safety net: if something stalls the destination screens for > 4s, hide
+  // the splash anyway so the user sees the app instead of a frozen icon.
+  // Normally the home / auth layouts hide the splash on mount themselves.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => { /* already hidden */ });
+    }, 4000);
+    return () => clearTimeout(id);
+  }, []);
+
   if (!isReady || !fontsLoaded) return null;
 
+  // Note: intentionally no <ClerkLoaded> wrapper. ClerkLoaded blocks rendering
+  // on a network-dependent load; offline launches with a cached session would
+  // hang forever. (app)/_layout and (auth)/_layout gate on useAuth().isLoaded
+  // themselves, which resolves from tokenCache without network.
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
-      <ClerkLoaded>
         <View className={`flex-1 ${colorScheme === "dark" ? "dark" : "light"}`}>
           {/* Default matches bg-background; AppHeader overrides for bg-primary contexts. */}
           <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
@@ -98,7 +116,6 @@ export default function RootLayout() {
             </ToastProvider>
           </SheetProvider>
         </View>
-      </ClerkLoaded>
     </ClerkProvider>
   );
 }

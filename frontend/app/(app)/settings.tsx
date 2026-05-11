@@ -424,8 +424,9 @@ export default function SettingsScreen() {
         {notifPermission !== "granted" && (
           <Pressable
             onPress={() => Linking.openSettings()}
-            className="active:opacity-70 items-center justify-center p-4 rounded-xl border border-primary"
+            className="active:opacity-70 flex-row items-center justify-center gap-2 bg-primary/10 border border-primary rounded-2xl p-3"
           >
+            <Ionicons name="notifications-outline" size={18} color={primaryColor} />
             <Text className="text-primary font-semibold">{t("open_settings")}</Text>
           </Pressable>
         )}

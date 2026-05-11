@@ -87,16 +87,18 @@ export default function DebugNotificationsScreen() {
               setReconciling(false);
             }
           }}
-          className="active:opacity-70 bg-primary/10 border border-primary rounded-xl p-3 items-center"
+          className="active:opacity-70 flex-row items-center justify-center gap-2 bg-primary/10 border border-primary rounded-2xl p-3"
         >
+          <Ionicons name="sync-outline" size={18} color={primary} />
           <Text className="text-primary font-semibold">
             {reconciling ? "Reconciling…" : "Reconcile with schedules"}
           </Text>
         </Pressable>
         <Pressable
           onPress={() => setClearLogsVisible(true)}
-          className="active:opacity-70 bg-red-500/10 border border-red-500 rounded-xl p-3 items-center"
+          className="active:opacity-70 flex-row items-center justify-center gap-2 bg-red-500/10 border border-red-500 rounded-2xl p-3"
         >
+          <Ionicons name="trash-outline" size={18} color="#ef4444" />
           <Text className="text-red-500 font-semibold">{t("clear_logs")}</Text>
         </Pressable>
       </View>

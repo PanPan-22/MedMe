@@ -6,8 +6,9 @@ import { useUser } from "@clerk/expo";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Link, Redirect, Stack, useFocusEffect } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FlatList,
@@ -48,6 +49,11 @@ export default function PatientHome() {
       return () => clearInterval(id);
     }, []),
   );
+
+  // Hide the splash once this home screen has mounted (smooth handoff).
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => { /* already hidden */ });
+  }, []);
 
   const fetchData = async () => {
     const meds = await db.getAllAsync<Schedule>(
