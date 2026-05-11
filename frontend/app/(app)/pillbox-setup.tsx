@@ -371,6 +371,7 @@ export default function PillboxSetupScreen() {
             >
               <Ionicons name="wifi" size={20} color={primaryColor} />
             </Pressable>
+            {status !== "not_connected" && (
             <Pressable
               onPress={testConnection}
               disabled={testing}
@@ -384,6 +385,7 @@ export default function PillboxSetupScreen() {
                 <Ionicons name="refresh" size={20} color={primaryColor} />
               )}
             </Pressable>
+            )}
           </View>
         </View>
 
