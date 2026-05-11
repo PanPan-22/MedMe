@@ -22,6 +22,7 @@ import {
 import WifiManager from "react-native-wifi-reborn";
 
 const PILLBOX_HOST = "http://192.168.4.1";
+const PILLBOX_AP_PASSWORD = "12345678";
 const REQUEST_TIMEOUT_MS = 5000;
 const WIFI_CONNECT_TIMEOUT_MS = 15000;
 const MAX_SLOTS = 8;
@@ -196,7 +197,7 @@ export default function PillboxSetupScreen() {
         return;
       }
       await withTimeout(
-        WifiManager.connectToSSIDPrefix("Pillbox_"),
+        WifiManager.connectToProtectedSSIDPrefix("Pillbox_", PILLBOX_AP_PASSWORD, false),
         WIFI_CONNECT_TIMEOUT_MS,
         "wifi-connect",
       );
@@ -235,9 +236,13 @@ export default function PillboxSetupScreen() {
     }
   };
 
-  useEffect(() => {
-    testConnection();
-  }, []);
+  // Re-check connection whenever the screen regains focus (e.g., user returns
+  // from manually joining the pillbox AP in system Settings).
+  useFocusEffect(
+    useCallback(() => {
+      testConnection();
+    }, []),
+  );
 
   // Active rules on the device — those with a non-zero dayMask.
   const armedDevice = pillboxRules
@@ -371,7 +376,6 @@ export default function PillboxSetupScreen() {
             >
               <Ionicons name="wifi" size={20} color={primaryColor} />
             </Pressable>
-            {status !== "not_connected" && (
             <Pressable
               onPress={testConnection}
               disabled={testing}
@@ -385,7 +389,6 @@ export default function PillboxSetupScreen() {
                 <Ionicons name="refresh" size={20} color={primaryColor} />
               )}
             </Pressable>
-            )}
           </View>
         </View>
 
