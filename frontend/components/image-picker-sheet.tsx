@@ -4,7 +4,6 @@ import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
 import { Text, TouchableOpacity, View } from "react-native";
 import ActionSheet, {
-  registerSheet,
   SheetDefinition,
   SheetManager,
   SheetProps,
@@ -101,7 +100,5 @@ const ImageSheet = (props: SheetProps<"image-picker-sheet">) => {
     </ActionSheet>
   );
 };
-
-registerSheet("image-picker-sheet", ImageSheet);
 
 export default ImageSheet;

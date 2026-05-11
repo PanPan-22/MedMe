@@ -132,7 +132,6 @@ export default function MedicineDetailScreen() {
     if (!validate()) return;
     if (!user || !role) { showToast(t("not_signed_in"), "error"); return; }
     try {
-      console.log(`[edit] cancelling old notifs: "${med?.notification_id}"`);
       await cancelNotificationsForMed(med?.notification_id ?? "");
       const notifIds = await scheduleNotificationsForMed({
         medicineName: name.trim(),
@@ -144,7 +143,6 @@ export default function MedicineDetailScreen() {
         endDate: expirationDate ? toLocalISODate(expirationDate) : null,
         patientId: med?.patient_id,
       });
-      console.log(`[edit] scheduled new notifs: "${notifIds}" (count=${notifIds.split(",").filter(Boolean).length})`);
       let uploadedUri = "";
       if (imageUri) {
         if (imageUri.startsWith("http://") || imageUri.startsWith("https://")) {
@@ -179,7 +177,7 @@ export default function MedicineDetailScreen() {
   const confirmDeleteMed = async () => {
     if (!user || !role) return;
     setDeleteConfirmVisible(false);
-    await cancelNotificationsForMed(med?.notification_id ?? "");
+    // deleteScheduleAndSync cancels notifications internally.
     await deleteScheduleAndSync(db, user.id, role, Number(id));
     showToast(t("medication_deleted"));
     router.back();

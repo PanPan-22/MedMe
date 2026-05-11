@@ -1,15 +1,18 @@
 import { useAuth, useUser } from "@clerk/expo";
 import Feather from "@expo/vector-icons/Feather";
 import * as Notifications from "expo-notifications";
+import * as SecureStore from "expo-secure-store";
+import Constants from "expo-constants";
 import { useBrandColor } from "@/hooks/use-brand-color";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useSyncEngine } from "@/hooks/use-sync-engine";
 import { useSyncPresence } from "@/hooks/use-sync-presence";
 import { useUserBoundary } from "@/hooks/use-user-boundary";
 import { Link, Redirect, router, Stack, usePathname } from "expo-router";
+import { markLegitModalEntry } from "./notification-modal";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -56,6 +59,8 @@ export default function AppLayout() {
   useSyncPresence();
   useSyncEngine();
 
+  const coldStartHandled = useRef(false);
+
   useEffect(() => {
     // When a notification is tapped, dismiss all currently-presented siblings
     // (same time slot — same threadIdentifier). Multiple meds at the same time
@@ -81,6 +86,7 @@ export default function AppLayout() {
       const threadId = response.notification.request.content.threadIdentifier;
       dismissSiblings(threadId);
       if (data?.time) {
+        markLegitModalEntry();
         router.push({
           pathname: "/notification-modal",
           params: { time: data.time, patientId: data.patientId ?? "" },
@@ -88,20 +94,46 @@ export default function AppLayout() {
       }
     });
 
-    // Handle cold-start notification tap
-    Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (response?.notification.request.content.data) {
-        const data = response.notification.request.content.data as any;
-        const threadId = response.notification.request.content.threadIdentifier;
-        dismissSiblings(threadId);
-        if (data?.time) {
-          router.push({
-            pathname: "/notification-modal",
-            params: { time: data.time, patientId: data.patientId ?? "" },
-          });
+    // Handle cold-start notification tap. The OS caches the last response and
+    // expo-notifications' clearLastNotificationResponse() doesn't always wipe
+    // it (Expo Go on Android keeps re-delivering the same stale tap). Track
+    // handled response IDs in SecureStore as a JS-side fingerprint — once an
+    // identifier has been seen, never re-act on it.
+    if (!coldStartHandled.current) {
+      coldStartHandled.current = true;
+      (async () => {
+        try {
+          // Skip entirely in Expo Go — notifications don't fire there, so any
+          // "last response" is stale leftovers from a prior dev-client session.
+          const isExpoGo = Constants.executionEnvironment === "storeClient";
+          if (isExpoGo) {
+            try { Notifications.clearLastNotificationResponse(); } catch { /* ignore */ }
+            return;
+          }
+
+          const response = await Notifications.getLastNotificationResponseAsync();
+          if (!response?.notification.request.content.data) return;
+          const id = response.notification.request.identifier;
+          const lastHandled = await SecureStore.getItemAsync("last_handled_notif_id");
+          if (lastHandled === id) return;
+          await SecureStore.setItemAsync("last_handled_notif_id", id);
+          const data = response.notification.request.content.data as any;
+          const threadId = response.notification.request.content.threadIdentifier;
+          dismissSiblings(threadId);
+          if (data?.time) {
+            markLegitModalEntry();
+            router.push({
+              pathname: "/notification-modal",
+              params: { time: data.time, patientId: data.patientId ?? "" },
+            });
+          }
+        } catch (e) {
+          console.warn("[notif] cold-start handler failed", e);
+        } finally {
+          try { Notifications.clearLastNotificationResponse(); } catch { /* ignore */ }
         }
-      }
-    });
+      })();
+    }
 
     return () => sub.remove();
   }, []);

@@ -121,8 +121,8 @@ async function applyScheduleUpsert(ctx: ApplyContext, event: SyncEvent) {
       repeatDays: p.repeat_days ?? "",
       stock: p.stock ?? 0,
       count: p.count ?? 1,
-      startDate: p.start_date,
-      endDate: p.end_date,
+      startDate: p.start_date ?? undefined,
+      endDate: p.end_date ?? undefined,
       patientId: localPatientId,
     });
     await ctx.db.runAsync(`UPDATE schedules SET notification_id = ? WHERE sync_id = ?`, [newIds, syncId]);
@@ -141,8 +141,7 @@ async function applyScheduleDelete(ctx: ApplyContext, event: SyncEvent) {
   if (row?.notification_id) {
     try { await cancelNotificationsForMed(row.notification_id); } catch { /* already gone */ }
   }
-  const result = await ctx.db.runAsync(`DELETE FROM schedules WHERE sync_id = ?`, [syncId]);
-  console.log(`[sync] deleted ${result.changes} row(s) for sync_id ${syncId.slice(0, 8)}`);
+  await ctx.db.runAsync(`DELETE FROM schedules WHERE sync_id = ?`, [syncId]);
   // Catch any orphan OS notifications now that the row is gone.
   reconcileNotifications(ctx.db).catch((e) => console.warn("post-delete reconcile failed", e));
 }

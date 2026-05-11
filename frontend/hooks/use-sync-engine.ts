@@ -2,7 +2,6 @@ import { applyEvent } from "@/db/apply-event";
 import {
   deleteSyncEvent,
   pushSyncEvent,
-  readCaretakerPatients,
   watchIncomingEvents,
 } from "@/db/firestore-ops";
 import { writeSnapshot } from "@/db/snapshot";
@@ -71,8 +70,11 @@ export function useSyncEngine() {
       if (cancelled) return;
       writeSnapshot(user.id, db).catch((e) => console.warn("writeSnapshot failed", e));
     };
-    write();
-    const id = setInterval(write, SNAPSHOT_INTERVAL_MS);
+    write().catch((e) => console.warn("[sync] snapshot write failed", e));
+    const id = setInterval(
+      () => write().catch((e) => console.warn("[sync] snapshot write failed", e)),
+      SNAPSHOT_INTERVAL_MS,
+    );
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -101,6 +103,8 @@ export function useSyncEngine() {
             break;
           }
         }
+      } catch (e) {
+        console.warn("[sync] flush failed", e);
       } finally {
         flushing.current = false;
       }
@@ -115,6 +119,7 @@ export function useSyncEngine() {
     if (!isLoaded || !user || !role) return;
 
     const unsub = watchIncomingEvents(user.id, async (events: SyncEvent[]) => {
+     try {
       await waitForBoundary();
       if (events.length > 0) console.log(`[sync] received ${events.length} incoming events`);
       // Process schedule events before log events so a log can find its parent
@@ -161,15 +166,12 @@ export function useSyncEngine() {
           console.warn("[sync] applyEvent failed", event.type, e);
         }
       }
+     } catch (e) {
+       console.warn("[sync] inbox callback failed", e);
+     }
     });
 
     return () => unsub();
   }, [isLoaded, user, role, db]);
 
-  useEffect(() => {
-    if (!isLoaded || !user || role !== "caretaker") return;
-    readCaretakerPatients(user.id).then((links) => {
-      console.log(`[sync] caretaker has ${links.length} linked patients`);
-    }).catch(() => {});
-  }, [isLoaded, user, role]);
 }

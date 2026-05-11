@@ -149,8 +149,8 @@ export async function updateScheduleAndSync(
         repeatDays: merged.repeat_days ?? "",
         stock: merged.stock,
         count: merged.count ?? 1,
-        startDate: merged.start_date,
-        endDate: merged.end_date,
+        startDate: merged.start_date ?? undefined,
+        endDate: merged.end_date ?? undefined,
         patientId: existing.patient_id,
       });
       await db.runAsync(`UPDATE schedules SET notification_id = ? WHERE id = ?`, [newIds, localId]);

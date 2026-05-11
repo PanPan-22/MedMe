@@ -130,7 +130,7 @@ export default function MeasurementDetailScreen() {
   const confirmDeleteMed = async () => {
     if (!user || !role) return;
     setDeleteConfirmVisible(false);
-    await cancelNotificationsForMed(med?.notification_id ?? "");
+    // deleteScheduleAndSync cancels notifications internally.
     await deleteScheduleAndSync(db, user.id, role, Number(id));
     showToast(t("medication_deleted"));
     router.back();

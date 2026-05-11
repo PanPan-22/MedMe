@@ -12,9 +12,6 @@ const LAST_USER_KEY = "last_signed_in_user_id";
 // the boundary's wipe + restore have completed.
 let _boundaryComplete = false;
 const _waiters: Array<() => void> = [];
-export function isBoundaryComplete() {
-  return _boundaryComplete;
-}
 export function waitForBoundary(): Promise<void> {
   if (_boundaryComplete) return Promise.resolve();
   return new Promise((resolve) => _waiters.push(resolve));
@@ -79,10 +76,9 @@ export function useUserBoundary() {
         }
 
         // Reconcile OS notifications against the just-restored DB BEFORE the
-        // sync engine unblocks. This is what useNotificationReconcile used to
-        // do as an independent effect — moving it here eliminates the race
-        // where reconcile and inbox applies would interleave and orphan
-        // notifications for a soon-to-be-deleted schedule.
+        // sync engine unblocks. Done here (instead of as a separate effect) so
+        // reconcile and inbox-apply can't interleave and orphan notifications
+        // for a soon-to-be-deleted schedule.
         try {
           const { canceled, rescheduled } = await reconcileNotifications(db);
           console.log(`[boundary] reconciled notifs: canceled=${canceled} rescheduled=${rescheduled}`);

@@ -4,7 +4,6 @@ import { daysLeftForMed, getNextAlarm, isLowStock, slotDayLabelKey } from "@/lib
 import { useSecureStorage } from "@/hooks/use-securestore";
 import { useUser } from "@clerk/expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useTheme } from "@react-navigation/native";
 import { Link, Redirect, router, Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
@@ -18,7 +17,6 @@ const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function CaretakerHome() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
   const { background, primary } = useBrandColor();
   const db = useSQLiteContext();
   const { user } = useUser();

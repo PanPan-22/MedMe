@@ -100,7 +100,7 @@ export default function ManagementScreen() {
       const searchResult = await db.getAllAsync<Schedule>(q, args);
       setMeds(searchResult);
     } catch (e) {
-      console.log("Search error:", e);
+      console.warn("[management] search failed", e);
     }
   };
 

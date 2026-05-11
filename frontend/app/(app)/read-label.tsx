@@ -4,27 +4,20 @@ import { useBrandColor } from "@/hooks/use-brand-color";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { GoogleGenAI } from "@google/genai";
 import { router, Stack } from "expo-router";
-import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, Text, View } from "react-native";
-// import { useSQLiteContext } from 'expo-sqlite';
-import * as SQLite from "expo-sqlite";
-import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
-import { Image } from "react-native";
+import { useTranslation } from "react-i18next";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SheetManager } from "react-native-actions-sheet";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-type SQLiteDatabase = SQLite.SQLiteDatabase | null;
-let db: SQLiteDatabase = null;
-let loadingScan = false;
-
-enum ScanMethod {
-  GoogleVision,
-}
-
 const medicineSchema = z
   .object({
+    is_medicine_label: z
+      .boolean()
+      .describe(
+        "True only if the source text is from a medicine/medication label. False for any other content (receipts, random text, food labels, blank/unreadable, etc.). When false, the other fields may be empty.",
+      ),
     medicine_name: z.string().describe("Name of the medicine"),
     count: z.number().describe("Number of units to take per dose"),
     type: z
@@ -43,9 +36,26 @@ const medicineSchema = z
   })
   .describe("Schema for a medicine note");
 
-const jsonSchema = zodToJsonSchema(medicineSchema, "medicineSchema");
-
 const LANGUAGE_NAMES: Record<string, string> = { en: "English", th: "Thai" };
+
+// Try the preview model first; fall back to GA models on quota exhaustion.
+// Non-quota errors (bad prompt, malformed image, network) fail fast — no
+// point burning through every model when the input itself is the problem.
+const MODELS = ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-2.0-flash"];
+
+const isQuotaError = (e: any): boolean => {
+  const msg = String(e?.message ?? e ?? "").toLowerCase();
+  const status = e?.status ?? e?.code;
+  if (status === 429 || status === 503) return true;
+  return (
+    msg.includes("429") ||
+    msg.includes("503") ||
+    msg.includes("resource_exhausted") ||
+    msg.includes("rate limit") ||
+    msg.includes("quota") ||
+    msg.includes("overloaded")
+  );
+};
 
 const TalkToGenAI = async (prompt: string): Promise<string> => {
   const keys = [
@@ -57,27 +67,27 @@ const TalkToGenAI = async (prompt: string): Promise<string> => {
     return "ERROR_FAILED_ALL_KEYS";
   }
 
-  for (let i = 0; i < keys.length; i++) {
-    try {
-      console.log(`Trying key ${i + 1}...`);
-      // Use the key from the loop, not the hardcoded one!
-      const ai = new GoogleGenAI({ apiKey: keys[i] });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseJsonSchema: zodToJsonSchema(medicineSchema),
-        },
-      });
-
-      const text = response.text;
-      if (text) return text;
-    } catch (error) {
-      console.error(`Key ${i + 1} failed:`, error);
-      if (i === keys.length - 1) {
-        // Only return an error string if ALL keys fail
-        return "ERROR_FAILED_ALL_KEYS";
+  for (const model of MODELS) {
+    for (let i = 0; i < keys.length; i++) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: keys[i] });
+        const response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseJsonSchema: zodToJsonSchema(medicineSchema),
+          },
+        });
+        const text = response.text;
+        if (text) return text;
+      } catch (error) {
+        console.error(`${model} key ${i + 1} failed:`, error);
+        if (!isQuotaError(error)) {
+          // Bad input or other non-quota failure — don't keep trying.
+          return "ERROR_FAILED_ALL_KEYS";
+        }
+        // Quota error: continue to next key, then next model.
       }
     }
   }
@@ -85,8 +95,11 @@ const TalkToGenAI = async (prompt: string): Promise<string> => {
 };
 
 const scanWithGoogleVision = async (uri: string) => {
-  const GoogleAPI = "AIzaSyDHUXQcozaiMQubk8DBcClSaI8jzFQNmGY";
-  loadingScan = true;
+  const GoogleAPI = process.env.EXPO_PUBLIC_GOOGLE_VISION_KEY;
+  if (!GoogleAPI) {
+    console.warn("EXPO_PUBLIC_GOOGLE_VISION_KEY is not set");
+    return "Error scanning text from image. Please try again.";
+  }
   try {
     const uriResponse = await fetch(uri);
     const blob = await uriResponse.blob();
@@ -121,9 +134,6 @@ const scanWithGoogleVision = async (uri: string) => {
   } catch (error) {
     console.error("scanWithGoogleVision failed", error);
     return "Error scanning text from image. Please try again.";
-  } finally {
-    console.log("Scan complete");
-    loadingScan = false;
   }
 };
 
@@ -132,12 +142,8 @@ export default function MedicineScreen() {
   const { primary: brandColor } = useBrandColor();
   const { showToast } = useToast();
   const [image, setImage] = useState("");
-  const [scannedText, setScannedText] = useState("");
   const [loading1, setLoading1] = useState(false); // Scanning
   const [loading2, setLoading2] = useState(false); // Parsing
-  const [success, setSuccess] = useState(false);
-
-  const db = useSQLiteContext();
 
   const handleCompleteScan = async () => {
     if (!image) return;
@@ -154,7 +160,7 @@ export default function MedicineScreen() {
       setLoading2(true);
       const lang = LANGUAGE_NAMES[i18n.resolvedLanguage ?? "en"] ?? "English";
       const aiResponse = await TalkToGenAI(
-        `Extract medication info from the label text below as JSON. Write the medicine_name and additional fields in ${lang} (translate if the source is in another language, but keep brand/trademark names in their original script). type, whenToTake, and count stay structural.\n\nLabel text:\n${text}`,
+        `Determine whether the text below is from a medicine/medication label. Set is_medicine_label accordingly. If false, leave the other fields empty or zero. If true, extract medication info as JSON. Write the medicine_name and additional fields in ${lang} (translate if the source is in another language, but keep brand/trademark names in their original script). type, whenToTake, and count stay structural.\n\nLabel text:\n${text}`,
       );
 
       // FIX: Check if the AI call actually succeeded
@@ -164,6 +170,11 @@ export default function MedicineScreen() {
       }
 
       const parsedNote = JSON.parse(aiResponse);
+
+      if (!parsedNote.is_medicine_label) {
+        showToast(t("not_a_medicine_label"), "error");
+        return;
+      }
 
       router.push({
         pathname: "/confirm-medication",
@@ -185,17 +196,10 @@ export default function MedicineScreen() {
   };
 
   const handleImagePickerSheet = async () => {
-    console.log("Opening image picker sheet...");
-    // 1. Tell TS exactly what the sheet returns (an object with a uri string)
     const result = (await SheetManager.show("image-picker-sheet", {
       payload: { noCrop: true },
     })) as { uri: string } | undefined;
-
-    // 2. Safely check if result exists, then extract the uri
-    if (result && result.uri) {
-      console.log("Image URI extracted:", result.uri);
-      setImage(result.uri); // This updates your state with just the string
-    }
+    if (result?.uri) setImage(result.uri);
   };
 
   return (
@@ -233,11 +237,8 @@ export default function MedicineScreen() {
         <>
           <Pressable
             className="disabled:opacity-50 active:opacity-50 flex-row items-center justify-center gap-4 bg-primary rounded-xl p-4 w-full"
-            disabled={loading1 || loading2} // Disable button if either loading state is true
-            onPress={async () => {
-              console.log("Starting combined scan and parse...");
-              handleCompleteScan();
-            }}
+            disabled={loading1 || loading2}
+            onPress={handleCompleteScan}
           >
             <Text className="text-2xl text-background">
               {loading1

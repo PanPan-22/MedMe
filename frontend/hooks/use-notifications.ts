@@ -256,7 +256,7 @@ export function useNotifications() {
       if (Platform.OS === "android") {
         await ensureChannelWithSound(await getSelectedSoundFile());
       }
-      if (status === "granted") console.log("Notification permissions granted.");
+      if (status !== "granted") console.warn("Notification permissions not granted");
     })();
   }, []);
 

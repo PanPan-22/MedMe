@@ -12,6 +12,17 @@ import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+// Module-level marker. Call markLegitModalEntry() right before pushing to
+// /notification-modal so the modal knows it was a real push, not URL
+// restoration (Expo Router persists the last URL across reloads in dev).
+let _legitEntry = false;
+export function markLegitModalEntry() { _legitEntry = true; }
+function consumeLegitModalEntry(): boolean {
+  const v = _legitEntry;
+  _legitEntry = false;
+  return v;
+}
+
 export default function NotificationModal() {
   const { time, patientId } = useLocalSearchParams<{ time: string; patientId?: string }>();
   const { t } = useTranslation();
@@ -19,7 +30,7 @@ export default function NotificationModal() {
   const { user } = useUser();
   const role = (user?.unsafeMetadata as any)?.role as "patient" | "caretaker" | undefined;
   const insets = useSafeAreaInsets();
-  const { background } = useBrandColor();
+  const { background, primary } = useBrandColor();
 
   const pid = patientId ? parseInt(patientId) : null;
 
@@ -28,6 +39,16 @@ export default function NotificationModal() {
   const [values, setValues] = useState<Record<number, string>>({});
   const [bpSys, setBpSys] = useState<Record<number, string>>({});
   const [bpDia, setBpDia] = useState<Record<number, string>>({});
+
+  // If we landed here via URL state restoration (Expo Router preserves the
+  // last URL across reloads in dev), bounce away. The module-level marker is
+  // only set right before legitimate router.push calls from notification taps.
+  useEffect(() => {
+    if (!consumeLegitModalEntry()) {
+      if (router.canGoBack()) router.back();
+      else router.replace("/");
+    }
+  }, []);
 
   useEffect(() => {
     const fetch = async () => {
@@ -50,7 +71,7 @@ export default function NotificationModal() {
     setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const confirm = async () => {
-    if (!user || !role) { router.back(); return; }
+    if (!user || !role) { router.canGoBack() ? router.back() : router.replace("/"); return; }
     const today = toLocalISODate(new Date());
     const timestamp = new Date().toISOString();
     for (const med of meds) {
@@ -116,14 +137,28 @@ export default function NotificationModal() {
         });
       }
     }
-    router.back();
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
   };
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top + 16 }}>
-      <View className="px-6 mb-6">
-        <Text className="text-primary/50 text-sm font-medium">{t("schedule")}</Text>
-        <Text className="text-primary text-4xl font-bold">{time}</Text>
+      <View className="px-6 mb-6 flex-row items-start justify-between">
+        <View>
+          <Text className="text-primary/50 text-sm font-medium">{t("schedule")}</Text>
+          <Text className="text-primary text-4xl font-bold">{time}</Text>
+        </View>
+        {/* Close button only when there's nothing to log — escape hatch for
+            stale/empty notifications. When meds exist, force confirmation. */}
+        {meds.length === 0 && (
+          <Pressable
+            className="active:opacity-70 p-2"
+            hitSlop={12}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+          >
+            <Ionicons name="close" size={28} color={primary} />
+          </Pressable>
+        )}
       </View>
 
       <ScrollView className="flex-1 px-6" contentContainerStyle={{ gap: 12, paddingBottom: 24 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">

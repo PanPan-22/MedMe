@@ -111,11 +111,9 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
       try { await db.execAsync(sql); } catch { /* already exists */ }
     }
 
-    // Collect notification_ids on schedule rows about to be deleted by dedup,
-    // so we (or useNotificationReconcile) can cancel them. We just clear the
-    // notification_id column on the soon-to-be-deleted rows; the keeper row's
-    // notification_id stays. Reconcile then sees mismatched OS notifications
-    // not claimed by any DB row and cancels them.
+    // Clear notification_id on schedule rows about to be deleted by dedup so
+    // useUserBoundary's reconcile pass sees the orphaned OS notifications and
+    // cancels them. The keeper row's notification_id stays.
     try {
       await db.execAsync(`
         UPDATE schedules SET notification_id = NULL
@@ -156,7 +154,6 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
       try { await db.execAsync(sql); } catch (e) { console.warn("index failed", e); }
     }
 
-    console.log("Database initialized");
   } catch (error) {
     console.error("Error initializing database:", error);
   }

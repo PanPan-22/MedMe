@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Animated, Text } from "react-native";
 
 type ToastType = "success" | "error";
@@ -16,39 +16,34 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   // Animation values
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mounted.current = false;
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, []);
 
   const showToast = (message: string, toastType: ToastType = "success") => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
     setMsg(message);
     setType(toastType);
 
-    // 1. Animate In
     Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
+      Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 300, useNativeDriver: true }),
     ]).start();
 
-    // 2. Wait 2.5s then Animate Out
-    setTimeout(() => {
+    hideTimer.current = setTimeout(() => {
+      hideTimer.current = null;
       Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: 20,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => setMsg("")); // Clear text after animation ends
+        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: 20, duration: 300, useNativeDriver: true }),
+      ]).start(() => {
+        if (mounted.current) setMsg("");
+      });
     }, 2500);
   };
 

@@ -66,12 +66,17 @@ export default function SignUpScreen() {
           lastName: lastName.trim(),
         },
       });
-      if (signUp.status === "complete") {
-        await setActive({ session: signUp.createdSessionId });
-        router.replace("/(app)");
-      }
     } catch {
       // errors surface via the `errors` signal
+      return;
+    }
+    // Handle status outside the try so a verification-required flow doesn't
+    // silently leave the user stranded with no UI feedback.
+    if (signUp.status === "complete") {
+      await setActive({ session: signUp.createdSessionId });
+      router.replace("/(app)");
+    } else {
+      console.warn("[sign-up] unexpected status:", signUp.status);
     }
   };
 
@@ -99,7 +104,6 @@ export default function SignUpScreen() {
               <Text
                 className="text-3xl font-bold text-primary shrink"
                 numberOfLines={1}
-                adjustsFontSizeToFit
               >
                 {t("register")}
               </Text>

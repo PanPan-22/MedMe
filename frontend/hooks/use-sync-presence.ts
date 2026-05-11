@@ -1,5 +1,5 @@
 import { useToast } from "@/context/toast-context";
-import { readPatientLink, readUserProfile, watchCaretakerPatients, watchPatientLink, watchUserProfile, writeUserProfile } from "@/db/firestore-ops";
+import { readUserProfile, watchCaretakerPatients, watchPatientLink, watchUserProfile, writeUserProfile } from "@/db/firestore-ops";
 import { getLink, removeLink, upsertLink } from "@/db/sync-db";
 import { backfillToCaretaker } from "@/db/sync-helpers";
 import { cancelNotificationsForMed } from "@/hooks/use-notifications";
@@ -41,39 +41,31 @@ export function useSyncPresence() {
       }
     };
 
-    readPatientLink(user.id)
-      .then(async (link) => {
+    // watchPatientLink delivers the current state on first snapshot, so a
+    // separate one-shot readPatientLink call would race with the watcher's
+    // initial fire (both writing the same row, sometimes producing a spurious
+    // "caretaker has been linked" toast).
+    const unsub = watchPatientLink(user.id, async (link) => {
+      try {
         const existing = await getLink(db, user.id);
-        if (link && !existing) {
+        if (link) {
+          const linkedAt = link.linkedAt?.toDate().toISOString() ?? new Date().toISOString();
+          const isNew = !existing;
           await upsertLink(db, {
             patient_clerk_id: link.patientClerkId,
             caretaker_clerk_id: link.caretakerClerkId,
-            linked_at: link.linkedAt?.toDate().toISOString() ?? new Date().toISOString(),
+            linked_at: linkedAt,
           });
-          await backfill(link.patientClerkId, link.caretakerClerkId);
-        } else if (!link && existing) {
+          if (isNew) {
+            showToast("A caretaker has been linked to your account.");
+            await backfill(link.patientClerkId, link.caretakerClerkId);
+          }
+        } else if (existing) {
           await removeLink(db, user.id);
+          showToast("Your caretaker has unlinked you.");
         }
-      })
-      .catch((e) => console.warn("readPatientLink failed", e));
-
-    const unsub = watchPatientLink(user.id, async (link) => {
-      const existing = await getLink(db, user.id);
-      if (link) {
-        const linkedAt = link.linkedAt?.toDate().toISOString() ?? new Date().toISOString();
-        const isNew = !existing;
-        await upsertLink(db, {
-          patient_clerk_id: link.patientClerkId,
-          caretaker_clerk_id: link.caretakerClerkId,
-          linked_at: linkedAt,
-        });
-        if (isNew) {
-          showToast("A caretaker has been linked to your account.");
-          await backfill(link.patientClerkId, link.caretakerClerkId);
-        }
-      } else if (existing) {
-        await removeLink(db, user.id);
-        showToast("Your caretaker has unlinked you.");
+      } catch (e) {
+        console.warn("[sync presence] patient-link callback failed", e);
       }
     });
 
@@ -85,6 +77,7 @@ export function useSyncPresence() {
     const subs = profileSubsRef.current;
 
     const unsub = watchCaretakerPatients(user.id, async (links) => {
+     try {
       const remoteIds = new Set(links.map((l) => l.patientClerkId));
       const localPatients = await db.getAllAsync<{ id: number; clerk_user_id: string | null; name: string }>(
         `SELECT id, clerk_user_id, name FROM patients WHERE clerk_user_id IS NOT NULL`,
@@ -133,15 +126,22 @@ export function useSyncPresence() {
       for (const patientClerkId of currentRemoteIds) {
         if (subs.has(patientClerkId)) continue;
         const unsubProfile = watchUserProfile(patientClerkId, async (profile) => {
-          if (!profile) return;
-          const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
-          await db.runAsync(
-            `UPDATE patients SET name = COALESCE(NULLIF(?, ''), name), image_uri = ?, updated_at = ? WHERE clerk_user_id = ?`,
-            [fullName, profile.imageUrl ?? null, new Date().toISOString(), patientClerkId],
-          );
+          try {
+            if (!profile) return;
+            const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+            await db.runAsync(
+              `UPDATE patients SET name = COALESCE(NULLIF(?, ''), name), image_uri = ?, updated_at = ? WHERE clerk_user_id = ?`,
+              [fullName, profile.imageUrl ?? null, new Date().toISOString(), patientClerkId],
+            );
+          } catch (e) {
+            console.warn("[sync presence] profile-watch callback failed", e);
+          }
         });
         subs.set(patientClerkId, unsubProfile);
       }
+     } catch (e) {
+       console.warn("[sync presence] caretaker-patients callback failed", e);
+     }
     });
 
     return () => {

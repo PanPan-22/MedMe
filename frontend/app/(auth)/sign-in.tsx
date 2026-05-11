@@ -62,7 +62,7 @@ export default function SignInScreen() {
             <Pressable className="active:opacity-70" hitSlop={20} onPress={() => router.back()}>
               <Ionicons name="arrow-back-outline" size={24} color={primary} />
             </Pressable>
-            <Text className="text-3xl font-bold text-primary shrink" numberOfLines={1} adjustsFontSizeToFit>{t("sign_in")}</Text>
+            <Text className="text-3xl font-bold text-primary shrink" numberOfLines={1}>{t("sign_in")}</Text>
           </View>
           <LanguageToggle />
         </View>
