@@ -234,5 +234,11 @@
   "pillbox_days_daily": "ทุกวัน",
   "pillbox_days_weekdays": "จ.-ศ.",
   "pillbox_days_weekends": "ส.-อา.",
-  "pillbox_open_wifi_settings": "เปิดการตั้งค่า Wi-Fi"
+  "pillbox_open_wifi_settings": "เปิดการตั้งค่า Wi-Fi",
+  "pillbox_connect": "เชื่อมต่อกล่องยา",
+  "pillbox_connecting": "กำลังเชื่อมต่อ…",
+  "pillbox_connect_failed": "เชื่อมต่อไม่สำเร็จ กรุณาตรวจสอบว่ากล่องยาเปิดอยู่และอยู่ใกล้",
+  "pillbox_connect_timeout": "ไม่พบกล่องยา กรุณาตรวจสอบว่ากล่องยาเปิดอยู่และอยู่ในระยะ แล้วลองอีกครั้ง",
+  "pillbox_permission_required": "ต้องการสิทธิ์ตำแหน่งเพื่อค้นหากล่องยา",
+  "pillbox_connect_ios_unsupported": "อุปกรณ์นี้ยังไม่รองรับการเชื่อมต่ออัตโนมัติ กรุณาใช้การตั้งค่า Wi-Fi แทน"
 }

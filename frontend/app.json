@@ -87,7 +87,8 @@
       ],
       "@clerk/expo",
       "expo-audio",
-      "expo-web-browser"
+      "expo-web-browser",
+      "react-native-wifi-reborn"
     ],
     "experiments": {
       "typedRoutes": true,
