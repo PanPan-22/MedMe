@@ -16,7 +16,7 @@ const medicineSchema = z
     is_medicine_label: z
       .boolean()
       .describe(
-        "True only if the source text is from a medicine/medication label. False for any other content (receipts, random text, food labels, blank/unreadable, etc.). When false, the other fields may be empty.",
+        "Default to true if the text plausibly comes from a medication or medicine label, even when partially in Thai or with unfamiliar brand/generic names. Set false ONLY for clearly non-medical content: receipts, food packaging, business cards, random unrelated text, or blank/unreadable input. When in doubt, prefer true so the user can verify on the next screen. When false, the other fields may be empty.",
       ),
     medicine_name: z.string().describe("Name of the medicine"),
     count: z.number().describe("Number of units to take per dose"),
@@ -166,7 +166,7 @@ export default function MedicineScreen() {
       setLoading2(true);
       const lang = LANGUAGE_NAMES[i18n.resolvedLanguage ?? "en"] ?? "English";
       const aiResponse = await TalkToGenAI(
-        `The text below was OCR'd from a medicine/medication label. The label may be in English, Thai, or a mix of both — interpret accordingly.\n\nDetermine whether it is actually a medicine label and set is_medicine_label accordingly. If false, leave the other fields empty or zero. If true, extract medication info as JSON. Write the medicine_name and additional fields in ${lang} (translate if the source language differs, but keep brand/trademark names in their original script). type, whenToTake, and count stay structural.\n\nLabel text:\n${text}`,
+        `The text below was OCR'd from what the user believes is a medicine/medication label. The label may be in English, Thai, or a mix of both — Thai medicine labels often include brand names you may not recognize, generic drug names in Thai script, hospital/pharmacy names, and dosing instructions in Thai. Interpret all of these as plausible medical content.\n\nDefault is_medicine_label to true unless the text is clearly something else (a receipt, food label, business card, blank/random text). When unsure, set true so the user can verify and edit on the next screen — false should be reserved for obviously non-medical content.\n\nWhen true, extract medication info as JSON. Write the medicine_name and additional fields in ${lang} (translate if the source language differs, but keep brand/trademark names in their original script). type, whenToTake, and count stay structural.\n\nLabel text:\n${text}`,
       );
 
       // FIX: Check if the AI call actually succeeded
