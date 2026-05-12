@@ -13,7 +13,7 @@ import { markLegitModalEntry } from "./notification-modal";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { useEffect, useRef } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SETTINGS_DESCENDANT_PATHS = ["/settings", "/pillbox-setup"];
@@ -138,7 +138,16 @@ export default function AppLayout() {
     return () => sub.remove();
   }, []);
 
-  if (!isLoaded) return null;
+  // Offline launches can leave Clerk's isLoaded permanently false (expired JWT
+   // it can't refresh). Render a visible loader instead of a blank screen so
+   // the user knows the app is alive.
+  if (!isLoaded) {
+    return (
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: bg }}>
+        <ActivityIndicator size="large" color={colorScheme === "dark" ? "#86efac" : "#062d13"} />
+      </View>
+    );
+  }
   if (!isSignedIn) return <Redirect href="/(auth)" />;
 
   const meta = user?.unsafeMetadata as any;
