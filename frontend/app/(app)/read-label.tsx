@@ -121,7 +121,13 @@ const scanWithGoogleVision = async (uri: string) => {
           requests: [
             {
               image: { content: base64 },
-              features: [{ type: "TEXT_DETECTION" }],
+              // DOCUMENT_TEXT_DETECTION is more accurate than TEXT_DETECTION for
+              // printed labels (handles structured text and multi-line layouts).
+              features: [{ type: "DOCUMENT_TEXT_DETECTION" }],
+              // Hint that the label may be in English or Thai. Without hints,
+              // Vision's auto-detect is decent for Latin but weaker on Thai
+              // characters with diacritics.
+              imageContext: { languageHints: ["en", "th"] },
             },
           ],
         }),
@@ -160,7 +166,7 @@ export default function MedicineScreen() {
       setLoading2(true);
       const lang = LANGUAGE_NAMES[i18n.resolvedLanguage ?? "en"] ?? "English";
       const aiResponse = await TalkToGenAI(
-        `Determine whether the text below is from a medicine/medication label. Set is_medicine_label accordingly. If false, leave the other fields empty or zero. If true, extract medication info as JSON. Write the medicine_name and additional fields in ${lang} (translate if the source is in another language, but keep brand/trademark names in their original script). type, whenToTake, and count stay structural.\n\nLabel text:\n${text}`,
+        `The text below was OCR'd from a medicine/medication label. The label may be in English, Thai, or a mix of both — interpret accordingly.\n\nDetermine whether it is actually a medicine label and set is_medicine_label accordingly. If false, leave the other fields empty or zero. If true, extract medication info as JSON. Write the medicine_name and additional fields in ${lang} (translate if the source language differs, but keep brand/trademark names in their original script). type, whenToTake, and count stay structural.\n\nLabel text:\n${text}`,
       );
 
       // FIX: Check if the AI call actually succeeded
