@@ -210,7 +210,7 @@
   "pillbox_debug_heading": "ดีบัก",
   "pillbox_test_fire": "แตะช่องเพื่อทดสอบ",
   "pillbox_test_sent": "ทดสอบช่อง {{n}} แล้ว",
-  "pillbox_wifi_instructions": "ในการตั้งค่า Wi-Fi ของโทรศัพท์ ให้เชื่อมต่อกับเครือข่าย \"Pillbox_XXX\" จากนั้นกลับมาที่นี่",
+  "pillbox_ble_instructions": "ตรวจสอบว่ากล่องยา MedMe เปิดอยู่และอยู่ในระยะไม่กี่เมตร แอปจะเชื่อมต่อผ่าน Bluetooth โดยอัตโนมัติ",
   "pillbox_status": "สถานะ",
   "pillbox_status_unknown": "ยังไม่ได้ตรวจสอบ",
   "pillbox_status_connected": "เชื่อมต่อแล้ว",
@@ -224,7 +224,7 @@
   "pillbox_capacity_warning": "แผนวันนี้ต้องใช้ {{count}} ช่อง แต่กล่องยามีเพียง 8 ช่อง จะใช้ 8 ช่องแรกเท่านั้น",
   "pillbox_send": "ส่งไปยังกล่องยา",
   "pillbox_sent": "ส่งไปยังกล่องยาแล้ว",
-  "pillbox_send_failed": "เชื่อมต่อกล่องยาไม่ได้ คุณเชื่อมต่อ Wi-Fi ของกล่องยาแล้วหรือยัง?",
+  "pillbox_send_failed": "เชื่อมต่อกล่องยาไม่ได้ กรุณาตรวจสอบว่ากล่องยาเปิดอยู่และอยู่ใกล้",
   "pillbox_nothing_to_push": "ไม่มีรายการที่จะส่ง วันนี้ไม่มียาที่จะกินเพิ่มเติม",
   "pillbox_select_max": "กล่องยาบรรจุได้สูงสุด {{count}} ช่อง กรุณาเอาออกก่อนเพิ่ม",
   "pillbox_armed_count": "ตั้งไว้ {{count}} ช่อง",
@@ -234,5 +234,10 @@
   "pillbox_days_daily": "ทุกวัน",
   "pillbox_days_weekdays": "จ.-ศ.",
   "pillbox_days_weekends": "ส.-อา.",
-  "pillbox_open_wifi_settings": "เปิดการตั้งค่า Wi-Fi"
+  "pillbox_connect": "เชื่อมต่อกล่องยา",
+  "pillbox_connecting": "กำลังเชื่อมต่อ…",
+  "pillbox_connect_failed": "เชื่อมต่อไม่สำเร็จ กรุณาตรวจสอบว่ากล่องยาเปิดอยู่และอยู่ใกล้",
+  "pillbox_connect_timeout": "ไม่พบกล่องยา กรุณาตรวจสอบว่ากล่องยาเปิดอยู่และอยู่ในระยะ",
+  "pillbox_permission_required": "ต้องการสิทธิ์ Bluetooth เพื่อค้นหากล่องยา",
+  "pillbox_bluetooth_off": "กรุณาเปิด Bluetooth แล้วลองอีกครั้ง"
 }

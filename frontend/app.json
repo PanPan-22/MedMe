@@ -95,6 +95,14 @@
             "usesCleartextTraffic": true
           }
         }
+      ],
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "modes": ["central"],
+          "bluetoothAlwaysPermission": "MedMe uses Bluetooth to connect to your MedMe Pillbox."
+        }
       ]
     ],
     "experiments": {

@@ -3,24 +3,34 @@ import { Schedule } from "@/components/local-db";
 import { useToast } from "@/context/toast-context";
 import { useSecureStorage } from "@/hooks/use-securestore";
 import { getWeeklySlotRules, SlotRule } from "@/lib/med-sort";
+import {
+  connectAndDiscover,
+  disconnect as bleDisconnect,
+  DeviceRule,
+  fireSlot as bleFireSlot,
+  ping as blePing,
+  pushSchedule as blePushSchedule,
+  readState,
+  scanForPillbox,
+  waitForPoweredOn,
+} from "@/lib/pillbox-ble";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Linking from "expo-linking";
 import { Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useColorScheme } from "nativewind";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
+  PermissionsAndroid,
   Platform,
   Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
+import { Device } from "react-native-ble-plx";
 
-const PILLBOX_HOST = "http://192.168.4.1";
-const REQUEST_TIMEOUT_MS = 5000;
 const MAX_SLOTS = 8;
 
 const THEME_COLORS = {
@@ -28,24 +38,7 @@ const THEME_COLORS = {
   dark: { primary: "#86efac", background: "#0a1410" },
 };
 
-type ConnectionStatus = "unknown" | "connected" | "not_connected";
-
-interface DeviceRule {
-  slot: number;       // 1-based
-  hour: number;
-  minute: number;
-  dayMask: number;
-}
-
-async function fetchWithTimeout(url: string, timeoutMs: number) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { signal: controller.signal });
-  } finally {
-    clearTimeout(id);
-  }
-}
+type ConnectionStatus = "unknown" | "connecting" | "connected" | "not_connected";
 
 function formatHM(hour: number, minute: number, locale: string): string {
   const d = new Date();
@@ -68,37 +61,33 @@ function formatDayMask(mask: number, t: (k: string) => string): string {
   return out.join(", ");
 }
 
-// Local "Unix-like" timestamp in seconds: utc + offset. The Arduino's RTC stores
-// these broken-down components verbatim, so its hour/minute/day-of-week match
-// the patient's local time without any tz handling on the device.
+// Local "Unix-like" timestamp in seconds: utc + offset. The Arduino's RTC
+// stores these broken-down components verbatim, so its hour/minute/day-of-week
+// match the patient's local time without any tz handling on the device.
 function localEpochNow(): number {
   return Math.floor(Date.now() / 1000) - new Date().getTimezoneOffset() * 60;
 }
 
-// Open the OS Wi-Fi settings screen so the user can join Pillbox_001.
-// Android has a stable intent. iOS used to support `App-Prefs:root=WIFI` but
-// Apple has tightened on this — fall back to the app settings screen, which
-// is the most we can reliably do.
-async function openWifiSettings(): Promise<void> {
-  if (Platform.OS === "android") {
-    try {
-      await Linking.sendIntent("android.settings.WIFI_SETTINGS");
-      return;
-    } catch (e) {
-      console.warn("openWifiSettings: Android intent failed", e);
-    }
-  } else if (Platform.OS === "ios") {
-    try {
-      const url = "App-Prefs:root=WIFI";
-      if (await Linking.canOpenURL(url)) {
-        await Linking.openURL(url);
-        return;
-      }
-    } catch (e) {
-      console.warn("openWifiSettings: iOS deep link failed", e);
-    }
+// Android 12+ needs BLUETOOTH_SCAN + BLUETOOTH_CONNECT at runtime. Older
+// Android versions needed ACCESS_FINE_LOCATION for scanning; the ble-plx
+// plugin adds it to the manifest with neverForLocation:false fallback.
+async function requestBlePermissions(): Promise<boolean> {
+  if (Platform.OS !== "android") return true;
+  const apiLevel = (Platform.Version as number) ?? 0;
+  const required: any[] = [];
+  if (apiLevel >= 31) {
+    required.push(
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+    );
+  } else {
+    required.push(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
   }
-  try { await Linking.openSettings(); } catch (e) { console.warn("openSettings failed", e); }
+  if (required.length === 0) return true;
+  const results = await PermissionsAndroid.requestMultiple(required);
+  return required.every(
+    (p) => (results as Record<string, string>)[p] === PermissionsAndroid.RESULTS.GRANTED,
+  );
 }
 
 export default function PillboxSetupScreen() {
@@ -116,10 +105,17 @@ export default function PillboxSetupScreen() {
   const { getValue } = useSecureStorage();
 
   const [status, setStatus] = useState<ConnectionStatus>("unknown");
-  const [testing, setTesting] = useState(false);
   const [sending, setSending] = useState(false);
   const [slotRules, setSlotRules] = useState<SlotRule[]>([]);
   const [debugEnabled, setDebugEnabled] = useState(false);
+  const [pillboxRules, setPillboxRules] = useState<DeviceRule[] | null>(null);
+  const [firingSlot, setFiringSlot] = useState<number | null>(null);
+  const [connectError, setConnectError] = useState<string | null>(null);
+
+  // Holds the currently-connected pillbox device. A ref (not state) because
+  // the BLE handle isn't a render-relevant value — its presence is reflected
+  // by `status`.
+  const deviceRef = useRef<Device | null>(null);
 
   useEffect(() => {
     getValue("debugNotifications").then((v) => setDebugEnabled(v === "true"));
@@ -143,32 +139,83 @@ export default function PillboxSetupScreen() {
     }, [loadRules]),
   );
 
-  // Mirror of what's actually scheduled on the device, fetched via /state.
-  const [pillboxRules, setPillboxRules] = useState<DeviceRule[] | null>(null);
-
-  const testConnection = async () => {
-    setTesting(true);
+  // Scan + connect + verify (ping + state). One atomic operation.
+  const connectFlow = useCallback(async () => {
+    setConnectError(null);
+    setStatus("connecting");
     try {
-      const res = await fetchWithTimeout(`${PILLBOX_HOST}/state`, REQUEST_TIMEOUT_MS);
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const body = await res.json();
-      const parsed: DeviceRule[] = Array.isArray(body?.rules) ? body.rules : [];
-      setPillboxRules(parsed);
+      const granted = await requestBlePermissions();
+      if (!granted) {
+        setConnectError(t("pillbox_permission_required"));
+        setStatus("not_connected");
+        return;
+      }
+      const powered = await waitForPoweredOn();
+      if (!powered) {
+        setConnectError(t("pillbox_bluetooth_off"));
+        setStatus("not_connected");
+        return;
+      }
+      // Drop any prior connection so we don't leak handles on reconnect.
+      if (deviceRef.current) {
+        await bleDisconnect(deviceRef.current);
+        deviceRef.current = null;
+      }
+      const found = await scanForPillbox();
+      if (!found) {
+        setConnectError(t("pillbox_connect_timeout"));
+        setStatus("not_connected");
+        return;
+      }
+      const connected = await connectAndDiscover(found);
+      deviceRef.current = connected;
+      const ok = await blePing(connected);
+      if (!ok) {
+        setConnectError(t("pillbox_connect_failed"));
+        setStatus("not_connected");
+        return;
+      }
+      const state = await readState(connected);
+      setPillboxRules(state.rules);
       setStatus("connected");
-    } catch {
+    } catch (e: any) {
+      console.warn("[pillbox-ble] connect flow failed", e);
+      setConnectError(t("pillbox_connect_failed"));
       setStatus("not_connected");
       setPillboxRules(null);
-    } finally {
-      setTesting(false);
     }
-  };
+  }, [t]);
 
-  // Re-check connection whenever the screen regains focus (e.g., user returns
-  // from manually joining the pillbox AP in system Settings).
+  // Quick re-read of current state on an already-connected device. Used by
+  // the refresh button when we believe we're connected.
+  const refreshState = useCallback(async () => {
+    if (!deviceRef.current) {
+      await connectFlow();
+      return;
+    }
+    setStatus("connecting");
+    try {
+      const state = await readState(deviceRef.current);
+      setPillboxRules(state.rules);
+      setStatus("connected");
+    } catch (e) {
+      console.warn("[pillbox-ble] refresh failed", e);
+      // Likely got disconnected silently — fall back to a full reconnect.
+      deviceRef.current = null;
+      await connectFlow();
+    }
+  }, [connectFlow]);
+
+  // Try to connect on focus. Disconnect on unmount so the radio is freed.
   useFocusEffect(
     useCallback(() => {
-      testConnection();
-    }, []),
+      connectFlow();
+      return () => {
+        const d = deviceRef.current;
+        deviceRef.current = null;
+        if (d) bleDisconnect(d);
+      };
+    }, [connectFlow]),
   );
 
   // Active rules on the device — those with a non-zero dayMask.
@@ -212,15 +259,17 @@ export default function PillboxSetupScreen() {
     });
   };
 
-  const [firingSlot, setFiringSlot] = useState<number | null>(null);
   const fireTest = async (slot: number) => {
+    if (!deviceRef.current) {
+      showToast(t("pillbox_send_failed"), "error");
+      return;
+    }
     setFiringSlot(slot);
     try {
-      const res = await fetchWithTimeout(`${PILLBOX_HOST}/fire?slot=${slot}`, REQUEST_TIMEOUT_MS);
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      setStatus("connected");
+      await bleFireSlot(deviceRef.current, slot);
       showToast(t("pillbox_test_sent", { n: slot }));
-    } catch {
+    } catch (e) {
+      console.warn("[pillbox-ble] fire test failed", e);
       setStatus("not_connected");
       showToast(t("pillbox_send_failed"), "error");
     } finally {
@@ -229,25 +278,32 @@ export default function PillboxSetupScreen() {
   };
 
   const sendPlan = async () => {
+    if (!deviceRef.current) {
+      showToast(t("pillbox_send_failed"), "error");
+      return;
+    }
     if (selectedRules.length === 0) {
       showToast(t("pillbox_nothing_to_push"), "error");
       return;
     }
-    const now = localEpochNow();
-    // Format: slot:HH:MM:mask,slot:HH:MM:mask,...
-    const rulesCsv = selectedRules
-      .map((r, i) => `${i + 1}:${r.hour}:${r.minute}:${r.dayMask}`)
-      .join(",");
-
     setSending(true);
     try {
-      const url = `${PILLBOX_HOST}/schedule?now=${now}&rules=${rulesCsv}`;
-      const res = await fetchWithTimeout(url, REQUEST_TIMEOUT_MS);
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      setStatus("connected");
+      const now = localEpochNow();
+      const payload = selectedRules.map((r, i) => ({
+        slot: i + 1,
+        hour: r.hour,
+        minute: r.minute,
+        dayMask: r.dayMask,
+      }));
+      await blePushSchedule(deviceRef.current, now, payload);
       showToast(t("pillbox_sent"));
-      testConnection();
-    } catch {
+      // Re-read state to confirm what landed on the device.
+      try {
+        const state = await readState(deviceRef.current);
+        setPillboxRules(state.rules);
+      } catch { /* state read non-critical */ }
+    } catch (e) {
+      console.warn("[pillbox-ble] schedule push failed", e);
       setStatus("not_connected");
       showToast(t("pillbox_send_failed"), "error");
     } finally {
@@ -258,9 +314,11 @@ export default function PillboxSetupScreen() {
   const statusLabel =
     status === "connected"
       ? t("pillbox_status_connected")
-      : status === "not_connected"
-        ? t("pillbox_status_not_connected")
-        : t("pillbox_status_unknown");
+      : status === "connecting"
+        ? t("pillbox_connecting")
+        : status === "not_connected"
+          ? t("pillbox_status_not_connected")
+          : t("pillbox_status_unknown");
 
   const statusDot =
     status === "connected"
@@ -269,6 +327,7 @@ export default function PillboxSetupScreen() {
         ? "bg-red-500"
         : "bg-primary/40";
 
+  const busy = status === "connecting" || sending;
   const locale = i18n.resolvedLanguage ?? "en";
 
   return (
@@ -281,7 +340,7 @@ export default function PillboxSetupScreen() {
         keyboardDismissMode="on-drag"
       >
       <View className="px-2 py-4">
-        <Text className="text-primary/60 text-sm mb-4">{t("pillbox_wifi_instructions")}</Text>
+        <Text className="text-primary/60 text-sm mb-4">{t("pillbox_ble_instructions")}</Text>
 
         <Text className="text-primary font-semibold mb-2 text-base">{t("pillbox_status")}</Text>
         <View className="flex-row items-center justify-between bg-card border border-primary/20 rounded-2xl px-4 py-3">
@@ -294,39 +353,35 @@ export default function PillboxSetupScreen() {
                 : ""}
             </Text>
           </View>
-          <View className="flex-row items-center gap-3">
-            <Pressable
-              onPress={openWifiSettings}
-              hitSlop={12}
-              accessibilityLabel={t("pillbox_open_wifi_settings")}
-              className="active:opacity-70"
-            >
-              <Ionicons name="wifi" size={20} color={primaryColor} />
-            </Pressable>
-            <Pressable
-              onPress={testConnection}
-              disabled={testing}
-              hitSlop={12}
-              accessibilityLabel={t("pillbox_refresh_status")}
-              className="active:opacity-70"
-            >
-              {testing ? (
-                <ActivityIndicator color={primaryColor} />
-              ) : (
-                <Ionicons name="refresh" size={20} color={primaryColor} />
-              )}
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={refreshState}
+            disabled={busy}
+            hitSlop={12}
+            accessibilityLabel={t("pillbox_refresh_status")}
+            className="active:opacity-70"
+          >
+            {status === "connecting" ? (
+              <ActivityIndicator color={primaryColor} />
+            ) : (
+              <Ionicons name="refresh" size={20} color={primaryColor} />
+            )}
+          </Pressable>
         </View>
 
         {status === "not_connected" && (
-          <Pressable
-            onPress={openWifiSettings}
-            className="active:opacity-70 flex-row items-center justify-center gap-2 bg-primary/10 border border-primary rounded-2xl p-3 mt-3"
-          >
-            <Ionicons name="wifi" size={18} color={primaryColor} />
-            <Text className="text-primary font-semibold">{t("pillbox_open_wifi_settings")}</Text>
-          </Pressable>
+          <View className="mt-3 gap-2">
+            <Pressable
+              onPress={connectFlow}
+              disabled={busy}
+              className="active:opacity-70 flex-row items-center justify-center gap-2 bg-primary rounded-2xl p-3 disabled:opacity-50"
+            >
+              <Ionicons name="bluetooth" size={18} color={bgColor} />
+              <Text className="text-background font-semibold">{t("pillbox_connect")}</Text>
+            </Pressable>
+            {connectError && (
+              <Text className="text-red-500 text-sm text-center px-2">{connectError}</Text>
+            )}
+          </View>
         )}
 
         {status === "connected" && armedDevice.length > 0 && (
@@ -440,9 +495,9 @@ export default function PillboxSetupScreen() {
 
         <Pressable
           onPress={sendPlan}
-          disabled={sending || selectedRules.length === 0}
+          disabled={sending || selectedRules.length === 0 || status !== "connected"}
           className={`active:opacity-70 items-center justify-center rounded-2xl p-4 ${
-            sending || selectedRules.length === 0 ? "bg-primary/50" : "bg-primary"
+            sending || selectedRules.length === 0 || status !== "connected" ? "bg-primary/50" : "bg-primary"
           }`}
         >
           {sending ? (
@@ -461,19 +516,19 @@ export default function PillboxSetupScreen() {
             <Text className="text-primary/60 text-sm mb-3">{t("pillbox_test_fire")}</Text>
             <View className="flex-row flex-wrap gap-2">
               {[1, 5, 2, 6, 3, 7, 4, 8].map((slot) => {
-                const busy = firingSlot === slot;
-                const disabled = firingSlot !== null;
+                const busyHere = firingSlot === slot;
+                const disabled = firingSlot !== null || status !== "connected";
                 return (
                   <Pressable
                     key={slot}
                     onPress={() => fireTest(slot)}
                     disabled={disabled}
                     className={`active:opacity-70 items-center justify-center rounded-2xl border border-primary py-4 ${
-                      disabled && !busy ? "opacity-40" : ""
+                      disabled && !busyHere ? "opacity-40" : ""
                     }`}
                     style={{ width: "48%" }}
                   >
-                    {busy ? (
+                    {busyHere ? (
                       <ActivityIndicator color={primaryColor} />
                     ) : (
                       <Text className="text-primary font-bold text-base">

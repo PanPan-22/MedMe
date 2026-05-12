@@ -210,7 +210,7 @@
   "pillbox_debug_heading": "Debug",
   "pillbox_test_fire": "Tap a slot to test",
   "pillbox_test_sent": "Slot {{n}} fired.",
-  "pillbox_wifi_instructions": "On your phone Wi-Fi settings, connect to the \"Pillbox_XXX\" network, then return here.",
+  "pillbox_ble_instructions": "Make sure your MedMe Pillbox is powered on and within a few meters. The app pairs over Bluetooth automatically.",
   "pillbox_status": "Status",
   "pillbox_status_unknown": "Not checked",
   "pillbox_status_connected": "Connected",
@@ -224,7 +224,7 @@
   "pillbox_capacity_warning": "Today's plan needs {{count}} slots, but the pillbox only has 8. Only the first 8 will be loaded.",
   "pillbox_send": "Push to Pillbox",
   "pillbox_sent": "Pushed to pillbox.",
-  "pillbox_send_failed": "Could not reach pillbox. Are you connected to its Wi-Fi?",
+  "pillbox_send_failed": "Could not reach pillbox. Make sure it's powered on and nearby.",
   "pillbox_nothing_to_push": "Nothing to push — no upcoming doses today.",
   "pillbox_select_max": "The pillbox holds at most {{count}} slots. Deselect one first.",
   "pillbox_armed_count": "{{count}} armed",
@@ -234,5 +234,10 @@
   "pillbox_days_daily": "Daily",
   "pillbox_days_weekdays": "Mon-Fri",
   "pillbox_days_weekends": "Sat-Sun",
-  "pillbox_open_wifi_settings": "Open Wi-Fi Settings"
+  "pillbox_connect": "Connect to Pillbox",
+  "pillbox_connecting": "Connecting…",
+  "pillbox_connect_failed": "Could not connect. Make sure the pillbox is powered on and nearby.",
+  "pillbox_connect_timeout": "Pillbox not found. Make sure it's powered on and within range.",
+  "pillbox_permission_required": "Bluetooth permission is required to find your pillbox.",
+  "pillbox_bluetooth_off": "Please turn on Bluetooth and try again."
 }
